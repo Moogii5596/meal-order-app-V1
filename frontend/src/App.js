@@ -4,6 +4,10 @@ import './App.css';
 const API = process.env.REACT_APP_API_URL;
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginName, setLoginName] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
   const [employees, setEmployees] = useState([]);
@@ -14,15 +18,32 @@ function App() {
   );
   const [loading, setLoading] = useState(false);
 
-  // departments
+  const handleLogin = () => {
+    fetch(`${API}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: loginName, password: loginPass })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setIsLoggedIn(true);
+        } else {
+          alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
+        }
+      })
+      .catch(() => alert('Сервертэй холбогдож чадсангүй'));
+  };
+
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     fetch(`${API}/departments`)
       .then(res => res.json())
       .then(data => setDepartments(data))
       .catch(err => console.error(err));
-  }, []);
+  }, [isLoggedIn]);
 
-  // employees
   useEffect(() => {
     if (selectedDept) {
       setLoading(true);
@@ -74,9 +95,39 @@ function App() {
 
   const deselectAll = () => setSelectedEmployees([]);
 
+  if (!isLoggedIn) {
+    return (
+      <div className="login-box">
+        <h1>Camp Meal Login</h1>
+
+        <input
+          type="text"
+          placeholder="Нэвтрэх нэр"
+          value={loginName}
+          onChange={e => setLoginName(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Нууц үг"
+          value={loginPass}
+          onChange={e => setLoginPass(e.target.value)}
+        />
+
+        <button className="login-btn" onClick={handleLogin}>
+          Нэвтрэх
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <h1>Хоолны захиалга</h1>
+
+      <button className="logout-btn" onClick={() => setIsLoggedIn(false)}>
+        Гарах
+      </button>
 
       <input
         type="date"
