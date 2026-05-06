@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+from pydantic import BaseModel
 import odoo_client
 
 app = FastAPI(title="Meal Order API")
@@ -13,9 +14,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 @app.get("/")
 def root():
     return {"message": "Meal Order API ажиллаж байна"}
+
+@app.post("/login")
+def login(data: LoginRequest):
+    if data.username == "admin" and data.password == "camp.admin":
+        return {"success": True}
+    return {"success": False}
 
 @app.get("/departments")
 def list_departments():
