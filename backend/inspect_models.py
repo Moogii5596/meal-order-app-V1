@@ -1,14 +1,18 @@
 import xmlrpc.client
 import ssl
 import json
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+ODOO_URL = os.getenv('ODOO_URL')
+ODOO_DB = os.getenv('ODOO_DB')
+ODOO_USERNAME = os.getenv('ODOO_USERNAME')
+ODOO_PASSWORD = os.getenv('ODOO_PASSWORD')
 # SSL bypass
 context = ssl._create_unverified_context()
-
-URL = "https://erp.erchmining.mn"
-DB = "erchmining"
-USERNAME = "moogii5596@gmail.com"
-PASSWORD = "123"
 
 def save_model_structure():
     try:
