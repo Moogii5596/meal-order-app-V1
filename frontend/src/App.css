@@ -1,0 +1,13 @@
+.App { padding: 20px; font-family: sans-serif; }
+.App-header { background: #f0f2f5; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.meal-types button { padding: 10px; margin-right: 5px; border: 1px solid #ccc; cursor: pointer; border-radius: 5px; }
+.meal-types button.active { background: #007bff; color: white; border-color: #007bff; }
+.employee-table { width: 100%; border-collapse: collapse; }
+.employee-table th, .employee-table td { border: 1px solid #ddd; padding: 12px; }
+.swiped-row { background-color: #fff1f0; color: #999; }
+.badge { padding: 5px 10px; border-radius: 15px; font-size: 12px; }
+.badge.success { background: #e6ffed; color: #28a745; }
+.badge.error { background: #fff1f0; color: #cf1322; }
+.submit-btn { margin-top: 20px; padding: 15px; width: 100%; background: #52c41a; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+.submit-btn:disabled { background: #d9d9d9; cursor: not-allowed; }

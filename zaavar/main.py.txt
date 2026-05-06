@@ -1,0 +1,20 @@
+from fastapi import FastAPI
+from odoo_client import test_connection, get_employee_list
+
+app = FastAPI(title="Meal Order System API")
+
+@app.get("/", tags=["Үндсэн"])
+def read_root():
+    return {"message": "Хоолны захиалгын систем ажиллаж байна"}
+
+@app.get("/odoo/check", tags=["Odoo Холболт"])
+def check_odoo():
+    """Odoo-той холбогдож байгаа эсэхийг шалгах"""
+    status = test_connection()
+    return {"status": status}
+
+@app.get("/employees", tags=["Ажилчид"])
+def list_employees():
+    """Odoo-оос ирсэн ажилчдын жагсаалтыг харуулах"""
+    employees = get_employee_list()
+    return {"total": len(employees), "employees": employees}
