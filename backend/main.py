@@ -22,19 +22,11 @@ def list_departments():
     return odoo_client.get_departments()
 
 @app.get("/employees")
-def list_employees(
-    dept_id: int = Query(...),
-    date: str = Query(...),
-    meal_type: str = Query(...)
-):
+def list_employees(dept_id: int, date: str, meal_type: str):
     employees = odoo_client.get_employees_by_department(dept_id, date, meal_type)
     return {"employees": employees}
 
 @app.post("/create-order")
-def create_order(
-    date: str,
-    meal_type: str,
-    employee_ids: List[int]
-):
+def create_order(date: str, meal_type: str, employee_ids: List[int]):
     order_id = odoo_client.create_meal_order(date, meal_type, employee_ids)
     return {"status": "success", "order_id": order_id}
