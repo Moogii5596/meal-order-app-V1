@@ -98,13 +98,15 @@ function KitchenView({ token, userDept }) {
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
   const submitOrder = () => {
+    // Зөвхөн харагдаж байгаа ажилтнуудаас сонгогдсоныг илгээнэ
+    const idsToSubmit = selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id));
     fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
-      body: JSON.stringify(selectedEmployees)
+      body: JSON.stringify(idsToSubmit)
     })
       .then(r => r.json())
       .then(() => {
@@ -229,9 +231,9 @@ function KitchenView({ token, userDept }) {
               ))}
             </tbody>
           </table>
-          {selectedEmployees.length > 0 && (
+          {selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length > 0 && (
             <button className="submit-btn" onClick={submitOrder}>
-              Захиалга илгээх ({selectedEmployees.length} ажилтан)
+              Захиалга илгээх ({selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length} ажилтан)
             </button>
           )}
         </div>
