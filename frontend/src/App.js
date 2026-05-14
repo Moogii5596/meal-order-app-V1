@@ -494,6 +494,7 @@ function App() {
   const [userDept, setUserDept] = useState(null);
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // Load auth state from localStorage on app start
   useEffect(() => {
@@ -525,7 +526,10 @@ function App() {
           localStorage.removeItem('authRole');
           localStorage.removeItem('authDeptId');
           localStorage.removeItem('authDeptName');
-        });
+        })
+        .finally(() => setIsLoadingAuth(false));
+    } else {
+      setIsLoadingAuth(false);
     }
   }, []);
 
@@ -563,6 +567,15 @@ function App() {
     localStorage.removeItem('authDeptId');
     localStorage.removeItem('authDeptName');
   };
+
+  if (isLoadingAuth) {
+    return (
+      <div className="login-box">
+        <h1>Camp Meal Login</h1>
+        <div className="empty-state">Шалгаж байна...</div>
+      </div>
+    );
+  }
 
   if (!role) {
     return (
