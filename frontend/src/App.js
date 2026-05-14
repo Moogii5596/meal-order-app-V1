@@ -93,7 +93,7 @@ function KitchenView({ token, userDept, userLocation }) {
         let employees = data.employees || [];
         // Filter by user location if set
         if (userLocation) {
-          employees = employees.filter(e => e.location === userLocation);
+          employees = employees.filter(e => e.location?.trim().toLowerCase() === userLocation.trim().toLowerCase());
         }
         setEmployees(employees);
         if (autoSelect) {
