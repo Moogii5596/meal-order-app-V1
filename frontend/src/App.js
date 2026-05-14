@@ -37,7 +37,7 @@ const ROLE_LABELS = {
 };
 
 // ── Захиалга үүсгэх ──
-function KitchenView({ token }) {
+function KitchenView({ token, userDept }) {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDeptName, setSelectedDeptName] = useState('');
@@ -49,12 +49,18 @@ function KitchenView({ token }) {
   const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
-    fetch(`${API}/departments`)
-      .then(r => r.json())
-      .then(data => setDepartments(data))
-      .catch(console.error);
-  }, []);
-
+    if (userDept) {
+      // Хэрэглэгчийн өөрийн хэлтэс автоматаар сонгогдоно
+      setDepartments([{ id: userDept.id, name: userDept.name }]);
+      setSelectedDept(userDept.id);
+      setSelectedDeptName(userDept.name);
+    } else {
+      fetch(`${API}/departments`)
+        .then(r => r.json())
+        .then(data => setDepartments(data))
+        .catch(console.error);
+    }
+  }, [userDept]);
 
   const handleDeptChange = (e) => {
     setSelectedDept(e.target.value);
@@ -340,6 +346,7 @@ function OrdersView({ role }) {
 function App() {
   const [role, setRole] = useState(null);
   const [token, setToken] = useState(null);
+  const [userDept, setUserDept] = useState(null);
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
@@ -354,6 +361,7 @@ function App() {
         if (data.success) {
           setRole(data.role);
           setToken(data.token);
+          if (data.dept_id) setUserDept({ id: String(data.dept_id), name: data.dept_name });
         } else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
       })
       .catch(() => alert('Сервертэй холбогдож чадсангүй'));
@@ -386,7 +394,7 @@ function App() {
         </div>
       </div>
 
-      <KitchenView token={token} />
+      <KitchenView token={token} userDept={userDept} />
       {role !== 'kitchen_staff' && <OrdersView role={role} />}
     </div>
   );

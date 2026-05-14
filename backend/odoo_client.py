@@ -67,7 +67,24 @@ def authenticate_user(username, password):
 
     for group_name, role in GROUP_ROLE_MAP.items():
         if group_name in matched_names:
-            return {'role': role, 'name': user_data[0]['name'], 'uid': uid, 'password': password}
+            # Хэрэглэгчийн хэлтсийг олох
+            employee = models.execute_kw(DB, uid, password,
+                'hr.employee', 'search_read',
+                [[['user_id', '=', uid]]],
+                {'fields': ['department_id'], 'limit': 1})
+            dept_id = None
+            dept_name = None
+            if employee and employee[0].get('department_id'):
+                dept_id = employee[0]['department_id'][0]
+                dept_name = employee[0]['department_id'][1]
+            return {
+                'role': role,
+                'name': user_data[0]['name'],
+                'uid': uid,
+                'password': password,
+                'dept_id': dept_id,
+                'dept_name': dept_name
+            }
 
     return None
 

@@ -48,7 +48,14 @@ async def login(data: LoginRequest):
             "role": result["role"],
             "name": result["name"]
         }
-        return {"success": True, "role": result["role"], "name": result["name"], "token": token}
+        return {
+            "success": True,
+            "role": result["role"],
+            "name": result["name"],
+            "token": token,
+            "dept_id": result.get("dept_id"),
+            "dept_name": result.get("dept_name")
+        }
     return {"success": False}
 
 @app.get("/departments")
