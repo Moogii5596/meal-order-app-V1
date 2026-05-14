@@ -173,7 +173,7 @@ function KitchenView({ token, userDept, userLocation }) {
 
   const submitOrder = () => {
     // Зөвхөн харагдаж байгаа ажилтнуудаас сонгогдсоныг илгээнэ
-    const idsToSubmit = selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id));
+    const idsToSubmit = selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id));
     fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
       method: 'POST',
       headers: {
@@ -258,12 +258,12 @@ function KitchenView({ token, userDept, userLocation }) {
             <div className="table-info">
               <strong>{selectedDeptName}</strong>
               {selectedLocation && <span> — {LOCATION_LABELS[selectedLocation] || selectedLocation}</span>}
-              <span className="stat"> | Нийт: {filteredEmployees.length} </span>
+              <span className="stat"> | Нийт: {sortedFilteredEmployees.length} </span>
               <span className="stat-success">Карттай: {swipedCount}</span>
               <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
             </div>
             <div>
-              <button type="button" className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
+              <button type="button" className="action-btn" onClick={() => setSelectedEmployees(sortedFilteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
               <button type="button" className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
               <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
             </div>
@@ -284,10 +284,10 @@ function KitchenView({ token, userDept, userLocation }) {
               <tr>
                 <th>
                   <input type="checkbox"
-                    checked={filteredEmployees.filter(e => !e.is_swiped).length > 0 &&
-                      filteredEmployees.filter(e => !e.is_swiped).every(e => selectedEmployees.includes(e.id))}
+                    checked={sortedFilteredEmployees.filter(e => !e.is_swiped).length > 0 &&
+                      sortedFilteredEmployees.filter(e => !e.is_swiped).every(e => selectedEmployees.includes(e.id))}
                     onChange={e => {
-                      const ids = filteredEmployees.filter(emp => !emp.is_swiped).map(emp => emp.id);
+                      const ids = sortedFilteredEmployees.filter(emp => !emp.is_swiped).map(emp => emp.id);
                       if (e.target.checked) {
                         setSelectedEmployees(prev => [...new Set([...prev, ...ids])]);
                       } else {
