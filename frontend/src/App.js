@@ -57,6 +57,7 @@ function KitchenView({ token, userDept, userLocation }) {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [extraEmployees, setExtraEmployees] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [favorites, setFavorites] = useState([]);
   const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
@@ -95,6 +96,14 @@ function KitchenView({ token, userDept, userLocation }) {
         if (userLocation) {
           employees = employees.filter(e => e.location?.trim().toLowerCase() === userLocation.trim().toLowerCase());
         }
+        // Sort favorites first
+        employees.sort((a, b) => {
+          const aFav = favorites.includes(a.id);
+          const bFav = favorites.includes(b.id);
+          if (aFav && !bFav) return -1;
+          if (!aFav && bFav) return 1;
+          return 0;
+        });
         setEmployees(employees);
         if (autoSelect) {
           setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id));
@@ -103,9 +112,37 @@ function KitchenView({ token, userDept, userLocation }) {
         }
         setLoading(false);
       });
-  }, [selectedDept, selectedDate, selectedMeal, userLocation]);
+  }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
+
+  // Fetch favorites on load
+  useEffect(() => {
+    if (token) {
+      fetch(`${API}/my-employees`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(data => setFavorites(data.favorites || []))
+        .catch(() => setFavorites([]));
+    }
+  }, [token]);
+
+  const saveFavorite = (empId) => {
+    fetch(`${API}/my-employees/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ employee_id: empId })
+    }).then(() => setFavorites(prev => [...prev, empId]));
+  };
+
+  const removeFavorite = (empId) => {
+    fetch(`${API}/my-employees/remove`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ employee_id: empId })
+    }).then(() => setFavorites(prev => prev.filter(id => id !== empId)));
+  };
 
   const submitOrder = () => {
     // Зөвхөн харагдаж байгаа ажилтнуудаас сонгогдсоныг илгээнэ
@@ -180,6 +217,11 @@ function KitchenView({ token, userDept, userLocation }) {
           )}
           <div className="table-header">
             <div className="table-info">
+              <strong>Миний ажилчид</strong> ({favorites.length})
+            </div>
+          </div>
+          <div className="table-header">
+            <div className="table-info">
               <strong>{selectedDeptName}</strong>
               {selectedLocation && <span> — {LOCATION_LABELS[selectedLocation] || selectedLocation}</span>}
               <span className="stat"> | Нийт: {filteredEmployees.length} </span>
@@ -227,9 +269,19 @@ function KitchenView({ token, userDept, userLocation }) {
                 <tr key={emp.id} className={emp.is_swiped ? 'swiped-row' : ''}>
                   <td>
                     <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
-                      onChange={() => setSelectedEmployees(prev =>
-                        prev.includes(emp.id) ? prev.filter(x => x !== emp.id) : [...prev, emp.id]
-                      )}
+                      onChange={() => {
+                        const wasSelected = selectedEmployees.includes(emp.id);
+                        setSelectedEmployees(prev =>
+                          prev.includes(emp.id) ? prev.filter(x => x !== emp.id) : [...prev, emp.id]
+                        );
+                        if (!wasSelected) {
+                          // Now selected, save favorite
+                          saveFavorite(emp.id);
+                        } else {
+                          // Now deselected, remove favorite
+                          removeFavorite(emp.id);
+                        }
+                      }}
                       disabled={emp.is_swiped} />
                   </td>
                   <td>{emp.last_name}</td>
@@ -323,7 +375,7 @@ function AddEmployeeModal({ onAdd, onClose }) {
             <tbody>
               {results.map(emp => (
                 <tr key={emp.id}>
-                  <td>{emp.last_name} {emp.name}</td>
+                  <td>{favorites.includes(emp.id) && "⭐"} {emp.last_name} {emp.name}</td>
                   <td style={{fontSize:12, color:'#888'}}>{emp.dept_name}</td>
                   <td><button className="confirm-btn" onClick={() => { onAdd(emp, tab); onClose(); }}>Нэмэх</button></td>
                 </tr>
