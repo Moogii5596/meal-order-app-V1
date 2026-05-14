@@ -67,7 +67,7 @@ def authenticate_user(username, password):
 
     for group_name, role in GROUP_ROLE_MAP.items():
         if group_name in matched_names:
-            return {'role': role, 'name': user_data[0]['name']}
+            return {'role': role, 'name': user_data[0]['name'], 'uid': uid, 'password': password}
 
     return None
 
@@ -185,11 +185,7 @@ def update_order_state(order_id, new_state):
 def create_meal_order(date, meal_type, employee_ids):
     uid, models = get_odoo_connection()
 
-    order_lines = []
-    for emp_id in employee_ids:
-        order_lines.append((0, 0, {
-            'employee_id': emp_id
-        }))
+    order_lines = [(0, 0, {'employee_id': emp_id}) for emp_id in employee_ids]
 
     order_data = {
         'date': date,
@@ -198,10 +194,19 @@ def create_meal_order(date, meal_type, employee_ids):
         'order_line': order_lines
     }
 
-    order_id = models.execute_kw(
-        DB, uid, PASSWORD,
-        'meal.order', 'create',
-        [order_data]
-    )
+    return models.execute_kw(DB, uid, PASSWORD, 'meal.order', 'create', [order_data])
 
-    return order_id
+
+def create_meal_order_as_user(date, meal_type, employee_ids, user_uid, user_password):
+    models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
+
+    order_lines = [(0, 0, {'employee_id': emp_id}) for emp_id in employee_ids]
+
+    order_data = {
+        'date': date,
+        'type': meal_type,
+        'state': 'draft',
+        'order_line': order_lines
+    }
+
+    return models.execute_kw(DB, user_uid, user_password, 'meal.order', 'create', [order_data])

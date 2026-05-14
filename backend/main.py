@@ -1,12 +1,16 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import os
+import secrets
 from dotenv import load_dotenv
 import odoo_client
+
+# Session хадгалах (token -> хэрэглэгчийн мэдээлэл)
+sessions = {}
 
 load_dotenv()
 
@@ -37,7 +41,14 @@ def root():
 async def login(data: LoginRequest):
     result = await run(odoo_client.authenticate_user, data.username, data.password)
     if result:
-        return {"success": True, "role": result["role"], "name": result["name"]}
+        token = secrets.token_hex(32)
+        sessions[token] = {
+            "uid": result["uid"],
+            "password": data.password,
+            "role": result["role"],
+            "name": result["name"]
+        }
+        return {"success": True, "role": result["role"], "name": result["name"], "token": token}
     return {"success": False}
 
 @app.get("/departments")
@@ -50,8 +61,15 @@ async def list_employees(dept_id: int, date: str, meal_type: str):
     return {"employees": employees}
 
 @app.post("/create-order")
-async def create_order(date: str, meal_type: str, employee_ids: List[int]):
-    order_id = await run(odoo_client.create_meal_order, date, meal_type, employee_ids)
+async def create_order(date: str, meal_type: str, employee_ids: List[int], authorization: Optional[str] = Header(None)):
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = sessions.get(token) if token else None
+
+    if session:
+        order_id = await run(odoo_client.create_meal_order_as_user, date, meal_type, employee_ids, session["uid"], session["password"])
+    else:
+        order_id = await run(odoo_client.create_meal_order, date, meal_type, employee_ids)
+
     return {"status": "success", "order_id": order_id}
 
 @app.get("/orders")

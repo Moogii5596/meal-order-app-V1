@@ -37,7 +37,7 @@ const ROLE_LABELS = {
 };
 
 // ── Захиалга үүсгэх ──
-function KitchenView() {
+function KitchenView({ token }) {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDeptName, setSelectedDeptName] = useState('');
@@ -84,7 +84,10 @@ function KitchenView() {
   const submitOrder = () => {
     fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
       body: JSON.stringify(selectedEmployees)
     })
       .then(r => r.json())
@@ -336,6 +339,7 @@ function OrdersView({ role }) {
 // ── Үндсэн App ──
 function App() {
   const [role, setRole] = useState(null);
+  const [token, setToken] = useState(null);
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
@@ -347,8 +351,10 @@ function App() {
     })
       .then(r => r.json())
       .then(data => {
-        if (data.success) setRole(data.role);
-        else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
+        if (data.success) {
+          setRole(data.role);
+          setToken(data.token);
+        } else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
       })
       .catch(() => alert('Сервертэй холбогдож чадсангүй'));
   };
@@ -380,7 +386,7 @@ function App() {
         </div>
       </div>
 
-      <KitchenView />
+      <KitchenView token={token} />
       {role !== 'kitchen_staff' && <OrdersView role={role} />}
     </div>
   );
