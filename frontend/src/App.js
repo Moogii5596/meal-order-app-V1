@@ -45,7 +45,7 @@ const ROLE_LABELS = {
 };
 
 // ── Захиалга үүсгэх ──
-function KitchenView({ token, userDept }) {
+function KitchenView({ token, userDept, userLocation }) {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDeptName, setSelectedDeptName] = useState('');
@@ -71,7 +71,14 @@ function KitchenView({ token, userDept }) {
         .then(data => setDepartments(data))
         .catch(console.error);
     }
-  }, [userDept]);
+    // Set selectedLocation to user's location
+    if (userLocation) {
+      const userLocationKey = Object.keys(LOCATION_LABELS).find(key => LOCATION_LABELS[key] === userLocation);
+      if (userLocationKey) {
+        setSelectedLocation(userLocationKey);
+      }
+    }
+  }, [userDept, userLocation]);
 
   const handleDeptChange = (e) => {
     setSelectedDept(e.target.value);
@@ -86,15 +93,23 @@ function KitchenView({ token, userDept }) {
     fetch(`${API}/employees?dept_id=${selectedDept}&date=${selectedDate}&meal_type=${selectedMeal}`)
       .then(r => r.json())
       .then(data => {
-        setEmployees(data.employees || []);
+        let employees = data.employees || [];
+        // Filter by user location if set
+        if (userLocation) {
+          const userLocationKey = Object.keys(LOCATION_LABELS).find(key => LOCATION_LABELS[key] === userLocation);
+          if (userLocationKey) {
+            employees = employees.filter(e => e.location === userLocationKey);
+          }
+        }
+        setEmployees(employees);
         if (autoSelect) {
-          setSelectedEmployees((data.employees || []).filter(e => !e.is_swiped).map(e => e.id));
+          setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id));
         } else {
           setSelectedEmployees([]);
         }
         setLoading(false);
       });
-  }, [selectedDept, selectedDate, selectedMeal]);
+  }, [selectedDept, selectedDate, selectedMeal, userLocation]);
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
@@ -492,6 +507,7 @@ function App() {
   const [role, setRole] = useState(null);
   const [token, setToken] = useState(null);
   const [userDept, setUserDept] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -512,12 +528,16 @@ function App() {
             if (data.dept_id) {
               setUserDept({ id: String(data.dept_id), name: data.dept_name });
             }
+            if (data.location) {
+              setUserLocation(data.location);
+            }
           } else {
             // Invalid token, clear localStorage
             localStorage.removeItem('authToken');
             localStorage.removeItem('authRole');
             localStorage.removeItem('authDeptId');
             localStorage.removeItem('authDeptName');
+            localStorage.removeItem('authLocation');
           }
         })
         .catch(() => {
@@ -526,6 +546,7 @@ function App() {
           localStorage.removeItem('authRole');
           localStorage.removeItem('authDeptId');
           localStorage.removeItem('authDeptName');
+          localStorage.removeItem('authLocation');
         })
         .finally(() => setIsLoadingAuth(false));
     } else {
@@ -545,12 +566,16 @@ function App() {
           setRole(data.role);
           setToken(data.token);
           if (data.dept_id) setUserDept({ id: String(data.dept_id), name: data.dept_name });
+          if (data.location) setUserLocation(data.location);
           // Store in localStorage
           localStorage.setItem('authToken', data.token);
           localStorage.setItem('authRole', data.role);
           if (data.dept_id) {
             localStorage.setItem('authDeptId', String(data.dept_id));
             localStorage.setItem('authDeptName', data.dept_name);
+          }
+          if (data.location) {
+            localStorage.setItem('authLocation', data.location);
           }
         } else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
       })
@@ -561,11 +586,13 @@ function App() {
     setRole(null);
     setToken(null);
     setUserDept(null);
+    setUserLocation(null);
     // Clear localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('authRole');
     localStorage.removeItem('authDeptId');
     localStorage.removeItem('authDeptName');
+    localStorage.removeItem('authLocation');
   };
 
   if (isLoadingAuth) {
@@ -604,7 +631,7 @@ function App() {
         </div>
       </div>
 
-      <KitchenView token={token} userDept={userDept} />
+      <KitchenView token={token} userDept={userDept} userLocation={userLocation} />
       {role !== 'kitchen_staff' && <OrdersView role={role} />}
     </div>
   );

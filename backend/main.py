@@ -51,13 +51,16 @@ async def login(data: LoginRequest):
         if "dept_id" in result:
             sessions[token]["dept_id"] = result["dept_id"]
             sessions[token]["dept_name"] = result["dept_name"]
+        if "location" in result:
+            sessions[token]["location"] = result["location"]
         return {
             "success": True,
             "role": result["role"],
             "name": result["name"],
             "token": token,
             "dept_id": result.get("dept_id"),
-            "dept_name": result.get("dept_name")
+            "dept_name": result.get("dept_name"),
+            "location": result.get("location")
         }
     return {"success": False}
 
@@ -71,7 +74,8 @@ async def me(authorization: Optional[str] = Header(None)):
         "role": session["role"],
         "name": session["name"],
         "dept_id": session.get("dept_id"),
-        "dept_name": session.get("dept_name")
+        "dept_name": session.get("dept_name"),
+        "location": session.get("location")
     }
 
 @app.get("/departments")
