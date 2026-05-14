@@ -1,22 +1,339 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
+
+// ── Toast мэдэгдэл ──
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className={`toast toast-${type}`}>{message}</div>
+  );
+}
+
+function useToast() {
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+  }, []);
+  const hideToast = useCallback(() => setToast(null), []);
+  return { toast, showToast, hideToast };
+}
 
 const API = process.env.REACT_APP_API_URL;
 
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loginName, setLoginName] = useState('');
-  const [loginPass, setLoginPass] = useState('');
+const MEAL_LABELS = {
+  breakfast: 'Өглөөний хоол',
+  lunch: 'Өдрийн хоол',
+  dinner: 'Оройн хоол',
+  night: 'Шөнийн хоол',
+};
 
+const ROLE_LABELS = {
+  kitchen_staff: 'Хоолны захиалагч',
+  category_manager: 'Хоолны захиалга хянагч ТН',
+  camp_manager: 'Кемп менежер',
+};
+
+// ── Захиалга үүсгэх ──
+function KitchenView() {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
+  const [selectedDeptName, setSelectedDeptName] = useState('');
   const [employees, setEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [selectedMeal, setSelectedMeal] = useState('lunch');
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
+
+  useEffect(() => {
+    fetch(`${API}/departments`)
+      .then(r => r.json())
+      .then(data => setDepartments(data))
+      .catch(console.error);
+  }, []);
+
+
+  const handleDeptChange = (e) => {
+    setSelectedDept(e.target.value);
+    const dept = departments.find(d => String(d.id) === e.target.value);
+    setSelectedDeptName(dept ? dept.name : '');
+    setEmployees([]);
+  };
+
+  const loadEmployees = useCallback(() => {
+    if (!selectedDept) return;
+    setLoading(true);
+    fetch(`${API}/employees?dept_id=${selectedDept}&date=${selectedDate}&meal_type=${selectedMeal}`)
+      .then(r => r.json())
+      .then(data => {
+        setEmployees(data.employees || []);
+        setSelectedEmployees((data.employees || []).filter(e => !e.is_swiped).map(e => e.id));
+        setLoading(false);
+      });
+  }, [selectedDept, selectedDate, selectedMeal]);
+
+  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+
+  const submitOrder = () => {
+    fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(selectedEmployees)
+    })
+      .then(r => r.json())
+      .then(() => {
+        showToast(`${MEAL_LABELS[selectedMeal]} захиалга амжилттай илгээгдлээ ✓`);
+        loadEmployees();
+      })
+      .catch(() => showToast('Алдаа гарлаа', 'error'));
+  };
+
+  const swipedCount = employees.filter(e => e.is_swiped).length;
+  const notSwipedCount = employees.filter(e => !e.is_swiped).length;
+
+  return (
+    <div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      <div className="controls">
+        <div className="control-row">
+          <label>Огноо:</label>
+          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+        </div>
+        <div className="control-row">
+          <label>Хэлтэс:</label>
+          <select onChange={handleDeptChange} value={selectedDept}>
+            <option value="">-- Хэлтэс сонгоно уу --</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+        <div className="meal-types">
+          {Object.entries(MEAL_LABELS).map(([key, label]) => (
+            <button key={key} className={selectedMeal === key ? 'active' : ''} onClick={() => setSelectedMeal(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!selectedDept ? (
+        <div className="empty-state">Эхлээд хэлтэс сонгоно уу</div>
+      ) : loading ? (
+        <div className="empty-state">Уншиж байна...</div>
+      ) : (
+        <div>
+          <div className="table-header">
+            <div className="table-info">
+              <strong>{selectedDeptName}</strong> — {MEAL_LABELS[selectedMeal]}
+              <span className="stat"> | Нийт: {employees.length} </span>
+              <span className="stat-success">Карттай: {swipedCount}</span>
+              <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
+            </div>
+            <div>
+              <button className="action-btn" onClick={() => setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
+              <button className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
+            </div>
+          </div>
+          <table className="employee-table">
+            <thead>
+              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Карт</th></tr>
+            </thead>
+            <tbody>
+              {employees.map(emp => (
+                <tr key={emp.id} className={emp.is_swiped ? 'swiped-row' : ''}>
+                  <td>
+                    <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
+                      onChange={() => setSelectedEmployees(prev =>
+                        prev.includes(emp.id) ? prev.filter(x => x !== emp.id) : [...prev, emp.id]
+                      )}
+                      disabled={emp.is_swiped} />
+                  </td>
+                  <td>{emp.last_name}</td>
+                  <td>{emp.name}</td>
+                  <td>{emp.job_title}</td>
+                  <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {selectedEmployees.length > 0 && (
+            <button className="submit-btn" onClick={submitOrder}>
+              Захиалга илгээх ({selectedEmployees.length} ажилтан)
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OrderModal({ orderId, onClose, onApprove, onConfirm, role }) {
+  const [detail, setDetail] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/orders/${orderId}`)
+      .then(r => r.json())
+      .then(setDetail);
+  }, [orderId]);
+
+  if (!detail) return (
+    <div className="modal-overlay">
+      <div className="modal-box"><div className="empty-state">Уншиж байна...</div></div>
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <strong>Захиалга #{detail.id}</strong>
+          <span>{detail.date} — {MEAL_LABELS[detail.type] || detail.type}</span>
+          <button className="action-btn" onClick={onClose}>✕</button>
+        </div>
+        <table className="employee-table">
+          <thead><tr><th>#</th><th>Ажилтан</th></tr></thead>
+          <tbody>
+            {detail.employees.map((e, i) => (
+              <tr key={e.id}><td>{i + 1}</td><td>{e.name}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{marginTop: 12, textAlign: 'right'}}>
+          {detail.state === 'draft' && (role === 'category_manager' || role === 'camp_manager') && (
+            <button className="approve-btn" onClick={() => { onApprove(detail.id); onClose(); }}>Батлах</button>
+          )}
+          {detail.state === 'done' && role === 'camp_manager' && (
+            <button className="confirm-btn" onClick={() => { onConfirm(detail.id); onClose(); }}>Баталгаажуулах</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STATE_TABS = [
+  { key: 'draft', label: 'Ноорог' },
+  { key: 'done', label: 'Батлагдсан' },
+  { key: 'confirmed', label: 'Баталгаажсан' },
+  { key: 'canceled', label: 'Цуцалсан' },
+];
+
+// ── Захиалгын жагсаалт (tab + шүүлтүүр) ──
+function OrdersView({ role }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('draft');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterMeal, setFilterMeal] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const { toast, showToast, hideToast } = useToast();
+
+  const fetchOrders = () => {
+    setLoading(true);
+    fetch(`${API}/orders`)
+      .then(r => r.json())
+      .then(data => { setOrders(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchOrders(); }, []);
+
+  const approve = (id) => {
+    fetch(`${API}/orders/${id}/approve`, { method: 'POST' })
+      .then(r => r.json())
+      .then(() => { showToast('Захиалга батлагдлаа ✓'); fetchOrders(); })
+      .catch(() => showToast('Алдаа гарлаа', 'error'));
+  };
+
+  const confirm = (id) => {
+    fetch(`${API}/orders/${id}/confirm`, { method: 'POST' })
+      .then(r => r.json())
+      .then(() => { showToast('Захиалга баталгаажлаа ✓'); fetchOrders(); })
+      .catch(() => showToast('Алдаа гарлаа', 'error'));
+  };
+
+  const counts = {};
+  orders.forEach(o => { counts[o.state] = (counts[o.state] || 0) + 1; });
+
+  const filtered = orders.filter(o =>
+    o.state === activeTab &&
+    (!filterDate || o.date === filterDate) &&
+    (!filterMeal || o.type === filterMeal)
+  );
+
+  const canApprove = role === 'category_manager' || role === 'camp_manager';
+  const canConfirm = role === 'camp_manager';
+  const showAction = (activeTab === 'draft' && canApprove) || (activeTab === 'done' && canConfirm);
+
+  return (
+    <div style={{marginTop: 20}}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {selectedOrder && (
+        <OrderModal
+          orderId={selectedOrder}
+          role={role}
+          onClose={() => setSelectedOrder(null)}
+          onApprove={(id) => { approve(id); setSelectedOrder(null); }}
+          onConfirm={(id) => { confirm(id); setSelectedOrder(null); }}
+        />
+      )}
+      <div className="meal-types" style={{marginBottom: 12}}>
+        {STATE_TABS.map(t => (
+          <button key={t.key} className={activeTab === t.key ? 'active' : ''} onClick={() => setActiveTab(t.key)}>
+            {t.label}{counts[t.key] ? ` (${counts[t.key]})` : ''}
+          </button>
+        ))}
+      </div>
+      <div className="controls" style={{marginBottom: 12}}>
+        <div className="control-row">
+          <label>Огноо:</label>
+          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+          {filterDate && <button className="action-btn" onClick={() => setFilterDate('')}>Цэвэрлэх</button>}
+        </div>
+        <div className="meal-types">
+          <button className={filterMeal === '' ? 'active' : ''} onClick={() => setFilterMeal('')}>Бүгд</button>
+          {Object.entries(MEAL_LABELS).map(([key, label]) => (
+            <button key={key} className={filterMeal === key ? 'active' : ''} onClick={() => setFilterMeal(key)}>{label}</button>
+          ))}
+        </div>
+      </div>
+      {loading ? <div className="empty-state">Уншиж байна...</div>
+      : filtered.length === 0 ? <div className="empty-state">Захиалга байхгүй байна</div>
+      : <table className="employee-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Огноо</th><th>Хоолны төрөл</th><th>Ажилтны тоо</th>
+              {showAction && <th>Үйлдэл</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(o => (
+              <tr key={o.id} style={{cursor:'pointer'}} onClick={() => setSelectedOrder(o.id)}>
+                <td>{o.id}</td>
+                <td>{o.date}</td>
+                <td>{MEAL_LABELS[o.type] || o.type}</td>
+                <td>{o.order_line?.length || 0}</td>
+                {activeTab === 'draft' && canApprove && (
+                  <td><button className="approve-btn" onClick={e => { e.stopPropagation(); approve(o.id); }}>Батлах</button></td>
+                )}
+                {activeTab === 'done' && canConfirm && (
+                  <td><button className="confirm-btn" onClick={e => { e.stopPropagation(); confirm(o.id); }}>Баталгаажуулах</button></td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>}
+    </div>
+  );
+}
+
+// ── Үндсэн App ──
+function App() {
+  const [role, setRole] = useState(null);
+  const [loginName, setLoginName] = useState('');
+  const [loginPass, setLoginPass] = useState('');
 
   const handleLogin = () => {
     fetch(`${API}/login`, {
@@ -24,174 +341,43 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: loginName, password: loginPass })
     })
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          setIsLoggedIn(true);
-        } else {
-          alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
-        }
+        if (data.success) setRole(data.role);
+        else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
       })
       .catch(() => alert('Сервертэй холбогдож чадсангүй'));
   };
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    fetch(`${API}/departments`)
-      .then(res => res.json())
-      .then(data => setDepartments(data))
-      .catch(err => console.error(err));
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (selectedDept) {
-      setLoading(true);
-
-      fetch(`${API}/employees?dept_id=${selectedDept}&date=${selectedDate}&meal_type=${selectedMeal}`)
-        .then(res => res.json())
-        .then(data => {
-          setEmployees(data.employees || []);
-          setSelectedEmployees(
-            data.employees
-              ? data.employees.filter(e => !e.is_swiped).map(e => e.id)
-              : []
-          );
-          setLoading(false);
-        });
-    }
-  }, [selectedDept, selectedDate, selectedMeal]);
-
-  const handleCheckboxChange = (id) => {
-    setSelectedEmployees(prev =>
-      prev.includes(id)
-        ? prev.filter(x => x !== id)
-        : [...prev, id]
-    );
-  };
-
-  const submitOrder = () => {
-    if (selectedEmployees.length === 0) {
-      alert("Ажилтан сонгоно уу!");
-      return;
-    }
-
-    fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(selectedEmployees)
-    })
-      .then(res => res.json())
-      .then(data => alert(`Амжилттай! Захиалга ID: ${data.order_id}`))
-      .catch(() => alert("Алдаа гарлаа"));
-  };
-
-  const selectAll = () => {
-    const ids = employees
-      .filter(e => !e.is_swiped)
-      .map(e => e.id);
-    setSelectedEmployees(ids);
-  };
-
-  const deselectAll = () => setSelectedEmployees([]);
-
-  if (!isLoggedIn) {
+  if (!role) {
     return (
       <div className="login-box">
         <h1>Camp Meal Login</h1>
-
-        <input
-          type="text"
-          placeholder="Нэвтрэх нэр"
-          value={loginName}
+        <input type="text" placeholder="Нэвтрэх нэр" value={loginName}
           onChange={e => setLoginName(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Нууц үг"
-          value={loginPass}
+          onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+        <input type="password" placeholder="Нууц үг" value={loginPass}
           onChange={e => setLoginPass(e.target.value)}
-        />
-
-        <button className="login-btn" onClick={handleLogin}>
-          Нэвтрэх
-        </button>
+          onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+        <button className="login-btn" onClick={handleLogin}>Нэвтрэх</button>
       </div>
     );
   }
 
   return (
     <div className="App">
-      <h1>Хоолны захиалга</h1>
-
-      <button className="logout-btn" onClick={() => setIsLoggedIn(false)}>
-        Гарах
-      </button>
-
-      <input
-        type="date"
-        value={selectedDate}
-        onChange={e => setSelectedDate(e.target.value)}
-      />
-
-      <select onChange={e => setSelectedDept(e.target.value)}>
-        <option value="">-- Хэлтэс --</option>
-        {departments.map(d => (
-          <option key={d.id} value={d.id}>{d.name}</option>
-        ))}
-      </select>
-
-      <div>
-        {['breakfast', 'lunch', 'dinner', 'night'].map(t => (
-          <button key={t} onClick={() => setSelectedMeal(t)}>
-            {t}
-          </button>
-        ))}
+      <div className="App-header">
+        <div className="header-row">
+          <div>
+            <h1>Хоолны захиалга</h1>
+            <span className="role-badge">{ROLE_LABELS[role]}</span>
+          </div>
+          <button className="logout-btn" onClick={() => setRole(null)}>Гарах</button>
+        </div>
       </div>
 
-      {loading ? <p>Уншиж байна...</p> : (
-        <div>
-          <button onClick={selectAll}>Бүгд</button>
-          <button onClick={deselectAll}>Цуцлах</button>
-
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Овог</th>
-                <th>Нэр</th>
-                <th>Албан тушаал</th>
-                <th>Карт</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map(emp => (
-                <tr key={emp.id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedEmployees.includes(emp.id)}
-                      onChange={() => handleCheckboxChange(emp.id)}
-                      disabled={emp.is_swiped}
-                    />
-                  </td>
-                  <td>{emp.last_name}</td>
-                  <td>{emp.name}</td>
-                  <td>{emp.job_title}</td>
-                  <td>{emp.is_swiped ? "✔" : "❌"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {employees.length > 0 && (
-        <button onClick={submitOrder}>
-          Захиалга илгээх
-        </button>
-      )}
+      <KitchenView />
+      {role !== 'kitchen_staff' && <OrdersView role={role} />}
     </div>
   );
 }

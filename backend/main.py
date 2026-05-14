@@ -1,10 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from pydantic import BaseModel
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import os
+from dotenv import load_dotenv
 import odoo_client
 
+load_dotenv()
+
 app = FastAPI(title="Meal Order API")
+executor = ThreadPoolExecutor(max_workers=10)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,26 +25,52 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+def run(fn, *args):
+    loop = asyncio.get_event_loop()
+    return loop.run_in_executor(executor, fn, *args)
+
 @app.get("/")
 def root():
     return {"message": "Meal Order API ажиллаж байна"}
 
 @app.post("/login")
-def login(data: LoginRequest):
-    if data.username == "admin" and data.password == "camp.admin":
-        return {"success": True}
+async def login(data: LoginRequest):
+    result = await run(odoo_client.authenticate_user, data.username, data.password)
+    if result:
+        return {"success": True, "role": result["role"], "name": result["name"]}
     return {"success": False}
 
 @app.get("/departments")
-def list_departments():
-    return odoo_client.get_departments()
+async def list_departments():
+    return await run(odoo_client.get_departments)
 
 @app.get("/employees")
-def list_employees(dept_id: int, date: str, meal_type: str):
-    employees = odoo_client.get_employees_by_department(dept_id, date, meal_type)
+async def list_employees(dept_id: int, date: str, meal_type: str):
+    employees = await run(odoo_client.get_employees_by_department, dept_id, date, meal_type)
     return {"employees": employees}
 
 @app.post("/create-order")
-def create_order(date: str, meal_type: str, employee_ids: List[int]):
-    order_id = odoo_client.create_meal_order(date, meal_type, employee_ids)
+async def create_order(date: str, meal_type: str, employee_ids: List[int]):
+    order_id = await run(odoo_client.create_meal_order, date, meal_type, employee_ids)
     return {"status": "success", "order_id": order_id}
+
+@app.get("/orders")
+async def list_orders(state: str = None):
+    return await run(odoo_client.get_orders, state)
+
+@app.get("/orders/{order_id}")
+async def get_order(order_id: int):
+    detail = await run(odoo_client.get_order_detail, order_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Not found")
+    return detail
+
+@app.post("/orders/{order_id}/approve")
+async def approve_order(order_id: int):
+    await run(odoo_client.update_order_state, order_id, "done")
+    return {"success": True}
+
+@app.post("/orders/{order_id}/confirm")
+async def confirm_order(order_id: int):
+    await run(odoo_client.update_order_state, order_id, "confirmed")
+    return {"success": True}

@@ -1,13 +1,17 @@
 import xmlrpc.client
 import ssl
+import os
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-# SSL bypass (internal network)
+load_dotenv()
+
 context = ssl._create_unverified_context()
 
-URL = "https://erp.erchmining.mn"
-DB = "erchmining"
-USERNAME = "moogii5596@gmail.com"
-PASSWORD = "123"
+URL = os.getenv("ODOO_URL")
+DB = os.getenv("ODOO_DB")
+USERNAME = os.getenv("ODOO_USERNAME")
+PASSWORD = os.getenv("ODOO_PASSWORD")
 
 # Cache (performance сайжруулалт)
 _uid = None
@@ -24,6 +28,48 @@ def get_odoo_connection():
     _models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
 
     return _uid, _models
+
+
+# Хэрэглэгчийг Odoo-д нэвтрүүлж дүрийг access group-аар тодорхойлно
+GROUP_ROLE_MAP = {
+    'Кемп менежер': 'camp_manager',
+    'Хоолны захиалга хянагч ТН': 'category_manager',
+    'Хоолны захиалга хянагч': 'kitchen_staff',
+}
+
+def authenticate_user(username, password):
+    common = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/common', context=context)
+    uid = common.authenticate(DB, username, password, {})
+
+    if not uid:
+        return None
+
+    models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
+
+    # Хэрэглэгчийн нэр авах
+    user_data = models.execute_kw(DB, uid, password,
+        'res.users', 'read', [[uid]], {'fields': ['name']})
+
+    if not user_data:
+        return None
+
+    # Зөвхөн target group-уудыг нэрээр хайх (бүх group биш)
+    target_names = list(GROUP_ROLE_MAP.keys())
+    matched = models.execute_kw(DB, uid, password,
+        'res.groups', 'search_read',
+        [[['name', 'in', target_names], ['users', 'in', [uid]]]],
+        {'fields': ['name']})
+
+    if not matched:
+        return None
+
+    matched_names = [g['name'] for g in matched]
+
+    for group_name, role in GROUP_ROLE_MAP.items():
+        if group_name in matched_names:
+            return {'role': role, 'name': user_data[0]['name']}
+
+    return None
 
 
 # -------------------------
@@ -80,6 +126,57 @@ def get_employees_by_department(dept_id, date, meal_type):
         emp['job_title'] = emp['job_id'][1] if emp['job_id'] else "Тодорхойгүй"
 
     return employees
+
+
+# -------------------------
+# Get orders
+# -------------------------
+def get_orders(state=None):
+    uid, models = get_odoo_connection()
+    yesterday = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    domain = [['date', '>=', yesterday]]
+    if state:
+        domain.append(['state', '=', state])
+    orders = models.execute_kw(
+        DB, uid, PASSWORD,
+        'meal.order', 'search_read',
+        [domain],
+        {'fields': ['id', 'date', 'type', 'state', 'order_line']}
+    )
+    return orders
+
+
+def get_order_detail(order_id):
+    uid, models = get_odoo_connection()
+    order = models.execute_kw(
+        DB, uid, PASSWORD,
+        'meal.order', 'read', [[order_id]],
+        {'fields': ['id', 'date', 'type', 'state', 'order_line']}
+    )
+    if not order:
+        return None
+    line_ids = order[0]['order_line']
+    employees = []
+    if line_ids:
+        lines = models.execute_kw(
+            DB, uid, PASSWORD,
+            'meal.order.line', 'read', [line_ids],
+            {'fields': ['employee_id']}
+        )
+        employees = [
+            {'id': l['employee_id'][0], 'name': l['employee_id'][1]}
+            for l in lines if l['employee_id']
+        ]
+    return {**order[0], 'employees': employees}
+
+
+def update_order_state(order_id, new_state):
+    uid, models = get_odoo_connection()
+    models.execute_kw(
+        DB, uid, PASSWORD,
+        'meal.order', 'write',
+        [[order_id], {'state': new_state}]
+    )
 
 
 # -------------------------
