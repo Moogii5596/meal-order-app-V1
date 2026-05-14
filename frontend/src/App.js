@@ -178,7 +178,23 @@ function KitchenView({ token, userDept }) {
           </div>
           <table className="employee-table">
             <thead>
-              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th></tr>
+              <tr>
+                <th>
+                  <input type="checkbox"
+                    checked={filteredEmployees.filter(e => !e.is_swiped).length > 0 &&
+                      filteredEmployees.filter(e => !e.is_swiped).every(e => selectedEmployees.includes(e.id))}
+                    onChange={e => {
+                      const ids = filteredEmployees.filter(emp => !emp.is_swiped).map(emp => emp.id);
+                      if (e.target.checked) {
+                        setSelectedEmployees(prev => [...new Set([...prev, ...ids])]);
+                      } else {
+                        setSelectedEmployees(prev => prev.filter(id => !ids.includes(id)));
+                      }
+                    }}
+                  />
+                </th>
+                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th>
+              </tr>
             </thead>
             <tbody>
               {filteredEmployees.map(emp => (
