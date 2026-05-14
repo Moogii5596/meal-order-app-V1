@@ -285,7 +285,7 @@ function KitchenView({ token, userDept, userLocation }) {
                       disabled={emp.is_swiped} />
                   </td>
                   <td>{emp.last_name}</td>
-                  <td>{emp.name}</td>
+                  <td>{favorites.includes(emp.id) && "⭐"} {emp.name}</td>
                   <td>{emp.job_title}</td>
                   <td>
                     {LOCATION_LABELS[emp.location] || emp.location || '—'}
