@@ -179,7 +179,7 @@ function KitchenView({ token, userDept }) {
             <div>
               <button className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
               <button className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
-              <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Сунасан</button>
+              <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
             </div>
           </div>
 
@@ -243,25 +243,52 @@ function KitchenView({ token, userDept }) {
 }
 
 function AddEmployeeModal({ onAdd, onClose }) {
+  const [tab, setTab] = useState('sunasan'); // 'sunasan' | 'rental'
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
 
+  // Түрээсийн tab нээхэд автоматаар ачаална
+  useEffect(() => {
+    if (tab === 'rental') {
+      setSearching(true);
+      fetch(`${API}/employees/rental`)
+        .then(r => r.json())
+        .then(data => { setResults(data); setSearching(false); })
+        .catch(() => setSearching(false));
+    } else {
+      setResults([]);
+      setQuery('');
+    }
+  }, [tab]);
+
   const search = () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    fetch(`${API}/employees/search?q=${encodeURIComponent(query)}`)
-      .then(r => r.json())
-      .then(data => { setResults(data); setSearching(false); })
-      .catch(() => setSearching(false));
+    if (tab === 'sunasan') {
+      if (!query.trim()) return;
+      setSearching(true);
+      fetch(`${API}/employees/search?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => { setResults(data); setSearching(false); })
+        .catch(() => setSearching(false));
+    } else {
+      setSearching(true);
+      fetch(`${API}/employees/rental?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => { setResults(data); setSearching(false); })
+        .catch(() => setSearching(false));
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <strong>Сунасан ажилтан нэмэх</strong>
+          <strong>Ажилтан нэмэх</strong>
           <button className="action-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="meal-types" style={{marginBottom:12}}>
+          <button className={tab === 'sunasan' ? 'active' : ''} onClick={() => setTab('sunasan')}>Сунасан</button>
+          <button className={tab === 'rental' ? 'active' : ''} onClick={() => setTab('rental')}>Түрээсийн</button>
         </div>
         <div style={{display:'flex', gap:8, marginBottom:12}}>
           <input
@@ -273,10 +300,13 @@ function AddEmployeeModal({ onAdd, onClose }) {
           />
           <button className="approve-btn" onClick={search}>Хайх</button>
         </div>
-        {searching && <div className="empty-state">Хайж байна...</div>}
+        {searching && <div className="empty-state">Уншиж байна...</div>}
+        {!searching && results.length === 0 && tab === 'sunasan' && (
+          <div className="empty-state" style={{padding:20}}>Нэр бичиж хайна уу</div>
+        )}
         {results.length > 0 && (
           <table className="employee-table">
-            <thead><tr><th>Нэр</th><th>Хэлтэс</th><th>Нэмэх</th></tr></thead>
+            <thead><tr><th>Нэр</th><th>Хэлтэс</th><th></th></tr></thead>
             <tbody>
               {results.map(emp => (
                 <tr key={emp.id}>

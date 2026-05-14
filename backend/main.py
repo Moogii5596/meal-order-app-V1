@@ -71,6 +71,10 @@ async def list_employees(dept_id: int, date: str, meal_type: str):
 async def search_employees(q: str):
     return await run(odoo_client.search_employees_global, q)
 
+@app.get("/employees/rental")
+async def get_rental_employees(q: str = ''):
+    return await run(odoo_client.get_rental_employees, q)
+
 
 @app.post("/create-order")
 async def create_order(date: str, meal_type: str, employee_ids: List[int], authorization: Optional[str] = Header(None)):

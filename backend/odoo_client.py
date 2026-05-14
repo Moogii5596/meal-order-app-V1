@@ -230,6 +230,24 @@ def create_meal_order(date, meal_type, employee_ids):
     return models.execute_kw(DB, uid, PASSWORD, 'meal.order', 'create', [order_data])
 
 
+def get_rental_employees(query=''):
+    uid, models = get_odoo_connection()
+    domain = [['department_id.name', 'ilike', 'түрээс']]
+    if query:
+        domain.append(['name', 'ilike', query])
+    employees = models.execute_kw(
+        DB, uid, PASSWORD,
+        'hr.employee', 'search_read',
+        [domain],
+        {'fields': ['id', 'name', 'last_name', 'job_id', 'department_id', 'location'], 'limit': 200}
+    )
+    for emp in employees:
+        emp['is_swiped'] = False
+        emp['job_title'] = emp['job_id'][1] if emp['job_id'] else 'Тодорхойгүй'
+        emp['dept_name'] = emp['department_id'][1] if emp['department_id'] else 'Тодорхойгүй'
+    return employees
+
+
 def create_meal_order_as_user(date, meal_type, employee_ids, user_uid, user_password):
     models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
 
