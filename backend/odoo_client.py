@@ -114,7 +114,7 @@ def get_employees_by_department(dept_id, date, meal_type):
         DB, uid, PASSWORD,
         'hr.employee', 'search_read',
         [emp_domain],
-        {'fields': ['id', 'name', 'last_name', 'job_id']}
+        {'fields': ['id', 'name', 'last_name', 'job_id', 'location']}
     )
 
     # 2. Swiped meals

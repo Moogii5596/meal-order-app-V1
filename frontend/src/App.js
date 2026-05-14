@@ -30,6 +30,13 @@ const MEAL_LABELS = {
   night: 'Шөнийн хоол',
 };
 
+const LOCATION_LABELS = {
+  uh: 'Ухаа худар',
+  bh: 'Баруун наран',
+  zas: 'Засвар',
+  office: 'Оффис',
+};
+
 const ROLE_LABELS = {
   kitchen_staff: 'Хоолны захиалагч',
   category_manager: 'Хоолны захиалга хянагч ТН',
@@ -46,6 +53,7 @@ function KitchenView({ token, userDept }) {
   const [selectedMeal, setSelectedMeal] = useState('lunch');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState('');
   const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
@@ -104,8 +112,16 @@ function KitchenView({ token, userDept }) {
       .catch(() => showToast('Алдаа гарлаа', 'error'));
   };
 
-  const swipedCount = employees.filter(e => e.is_swiped).length;
-  const notSwipedCount = employees.filter(e => !e.is_swiped).length;
+  // Байгаа location-уудыг динамикаар гаргах
+  const locations = [...new Set(employees.map(e => e.location).filter(Boolean))];
+
+  // Location шүүлтүүр
+  const filteredEmployees = selectedLocation
+    ? employees.filter(e => e.location === selectedLocation)
+    : employees;
+
+  const swipedCount = filteredEmployees.filter(e => e.is_swiped).length;
+  const notSwipedCount = filteredEmployees.filter(e => !e.is_swiped).length;
 
   return (
     <div>
@@ -137,24 +153,35 @@ function KitchenView({ token, userDept }) {
         <div className="empty-state">Уншиж байна...</div>
       ) : (
         <div>
+          {locations.length > 1 && (
+            <div className="meal-types" style={{marginBottom: 10}}>
+              <button className={selectedLocation === '' ? 'active' : ''} onClick={() => setSelectedLocation('')}>Бүгд</button>
+              {locations.map(loc => (
+                <button key={loc} className={selectedLocation === loc ? 'active' : ''} onClick={() => setSelectedLocation(loc)}>
+                  {LOCATION_LABELS[loc] || loc}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="table-header">
             <div className="table-info">
-              <strong>{selectedDeptName}</strong> — {MEAL_LABELS[selectedMeal]}
-              <span className="stat"> | Нийт: {employees.length} </span>
+              <strong>{selectedDeptName}</strong>
+              {selectedLocation && <span> — {LOCATION_LABELS[selectedLocation] || selectedLocation}</span>}
+              <span className="stat"> | Нийт: {filteredEmployees.length} </span>
               <span className="stat-success">Карттай: {swipedCount}</span>
               <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
             </div>
             <div>
-              <button className="action-btn" onClick={() => setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
+              <button className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
               <button className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
             </div>
           </div>
           <table className="employee-table">
             <thead>
-              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Карт</th></tr>
+              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Тэсэн</th><th>Карт</th></tr>
             </thead>
             <tbody>
-              {employees.map(emp => (
+              {filteredEmployees.map(emp => (
                 <tr key={emp.id} className={emp.is_swiped ? 'swiped-row' : ''}>
                   <td>
                     <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
@@ -166,6 +193,7 @@ function KitchenView({ token, userDept }) {
                   <td>{emp.last_name}</td>
                   <td>{emp.name}</td>
                   <td>{emp.job_title}</td>
+                  <td>{LOCATION_LABELS[emp.location] || emp.location || '—'}</td>
                   <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
                 </tr>
               ))}
