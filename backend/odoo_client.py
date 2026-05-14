@@ -71,15 +71,15 @@ def authenticate_user(username, password):
             employee = models.execute_kw(DB, uid, password,
                 'hr.employee', 'search_read',
                 [[['user_id', '=', uid]]],
-                {'fields': ['department_id', 'work_location'], 'limit': 1})
+                {'fields': ['department_id', 'location'], 'limit': 1})
             dept_id = None
             dept_name = None
             location = None
             if employee and employee[0].get('department_id'):
                 dept_id = employee[0]['department_id'][0]
                 dept_name = employee[0]['department_id'][1]
-            if employee and employee[0].get('work_location'):
-                location = employee[0]['work_location'][0]  # assuming it's the ID, but wait, probably need the code or name
+            if employee and employee[0].get('location'):
+                location = employee[0]['location']
             return {
                 'role': role,
                 'name': user_data[0]['name'],

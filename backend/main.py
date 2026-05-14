@@ -6,6 +6,10 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import os
 import secrets
+import hmac
+import hashlib
+import base64
+import json
 from dotenv import load_dotenv
 import odoo_client
 
@@ -13,6 +17,8 @@ import odoo_client
 sessions = {}
 
 load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 
 app = FastAPI(title="Meal Order API")
 executor = ThreadPoolExecutor(max_workers=10)
@@ -33,6 +39,36 @@ def run(fn, *args):
     loop = asyncio.get_event_loop()
     return loop.run_in_executor(executor, fn, *args)
 
+def sign_payload(payload: str) -> str:
+    return hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+
+def encode_token(data: dict) -> str:
+    payload = json.dumps(data, separators=(",", ":"), sort_keys=True)
+    payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+    signature = sign_payload(payload_b64)
+    return f"{payload_b64}.{signature}"
+
+def decode_token(token: str) -> Optional[dict]:
+    if not token or "." not in token:
+        return None
+    payload_b64, signature = token.rsplit(".", 1)
+    if not hmac.compare_digest(sign_payload(payload_b64), signature):
+        return None
+    try:
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        payload_json = base64.urlsafe_b64decode(padded.encode()).decode()
+        return json.loads(payload_json)
+    except Exception:
+        return None
+
+def get_session(token: Optional[str]) -> Optional[dict]:
+    if not token:
+        return None
+    session = sessions.get(token)
+    if session:
+        return session
+    return decode_token(token)
+
 @app.get("/")
 def root():
     return {"message": "Meal Order API ажиллаж байна"}
@@ -41,18 +77,17 @@ def root():
 async def login(data: LoginRequest):
     result = await run(odoo_client.authenticate_user, data.username, data.password)
     if result:
-        token = secrets.token_hex(32)
-        sessions[token] = {
+        auth_data = {
             "uid": result["uid"],
             "password": data.password,
             "role": result["role"],
-            "name": result["name"]
+            "name": result["name"],
+            "dept_id": result.get("dept_id"),
+            "dept_name": result.get("dept_name"),
+            "location": result.get("location")
         }
-        if "dept_id" in result:
-            sessions[token]["dept_id"] = result["dept_id"]
-            sessions[token]["dept_name"] = result["dept_name"]
-        if "location" in result:
-            sessions[token]["location"] = result["location"]
+        token = encode_token(auth_data)
+        sessions[token] = auth_data
         return {
             "success": True,
             "role": result["role"],
@@ -67,7 +102,7 @@ async def login(data: LoginRequest):
 @app.get("/me")
 async def me(authorization: Optional[str] = Header(None)):
     token = authorization.replace("Bearer ", "") if authorization else None
-    session = sessions.get(token) if token else None
+    session = get_session(token)
     if not session:
         raise HTTPException(status_code=401, detail="Invalid token")
     return {
@@ -99,7 +134,7 @@ async def get_rental_employees(q: str = ''):
 @app.post("/create-order")
 async def create_order(date: str, meal_type: str, employee_ids: List[int], authorization: Optional[str] = Header(None)):
     token = authorization.replace("Bearer ", "") if authorization else None
-    session = sessions.get(token) if token else None
+    session = get_session(token)
 
     if session:
         order_id = await run(odoo_client.create_meal_order_as_user, date, meal_type, employee_ids, session["uid"], session["password"])
