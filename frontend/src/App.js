@@ -107,15 +107,22 @@ function KitchenView({ token, userDept, userLocation }) {
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
-  // Fetch favorites on load
+  // Fetch favorites and extra employees on load
   useEffect(() => {
     if (token) {
       fetch(`${API}/my-employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(r => r.json())
-        .then(data => setFavorites(data.favorites || []))
-        .catch(() => setFavorites([]));
+        .then(data => {
+          setFavorites(data.favorites || []);
+          const extras = data.extra_employees || [];
+          setExtraEmployees(extras.map(e => ({ id: e.id, extra_type: e.extra_type, is_extra: true, is_swiped: false })));
+        })
+        .catch(() => {
+          setFavorites([]);
+          setExtraEmployees([]);
+        });
     }
   }, [token]);
 
@@ -144,6 +151,15 @@ function KitchenView({ token, userDept, userLocation }) {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ employee_id: empId })
     }).then(() => setFavorites(prev => prev.filter(id => id !== empId)));
+  };
+
+  const removeExtraEmployee = (empId) => {
+    if (!token) return;
+    fetch(`${API}/my-extra-employees/remove`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ employee_id: empId })
+    }).then(() => setExtraEmployees(prev => prev.filter(e => e.id !== empId)));
   };
 
   const saveShift = () => {
@@ -272,9 +288,17 @@ function KitchenView({ token, userDept, userLocation }) {
           {showAddModal && (
             <AddEmployeeModal
               favorites={favorites}
+              token={token}
               onAdd={(emp, tab) => {
                 setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab, is_swiped: false}]);
                 setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
+                if (token) {
+                  fetch(`${API}/my-extra-employees/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ employee_id: emp.id, extra_type: tab })
+                  }).catch(console.error);
+                }
               }}
               onClose={() => setShowAddModal(false)}
             />
@@ -323,6 +347,10 @@ function KitchenView({ token, userDept, userLocation }) {
                     {favorites.includes(emp.id) ? (
                       <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
                         Хасах
+                      </button>
+                    ) : emp.is_extra ? (
+                      <button type="button" className="action-btn" style={{borderColor:'#ff9800', color:'#ff9800'}} onClick={() => removeExtraEmployee(emp.id)}>
+                        Нэмэлтээс хасах
                       </button>
                     ) : isFavoriteEligible(emp) ? (
                       <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>

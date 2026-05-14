@@ -24,12 +24,18 @@ SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
 app = FastAPI(title="Meal Order API")
 executor = ThreadPoolExecutor(max_workers=10)
 
-# SQLite DB for favorites
+# SQLite DB for favorites and extra employees
 def init_db():
     conn = sqlite3.connect('favorites.db')
     conn.execute('''CREATE TABLE IF NOT EXISTS favorite_employees (
         username TEXT,
         employee_id INTEGER,
+        UNIQUE(username, employee_id)
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS extra_employees (
+        username TEXT,
+        employee_id INTEGER,
+        extra_type TEXT,
         UNIQUE(username, employee_id)
     )''')
     conn.commit()
@@ -54,6 +60,26 @@ def get_favorite_employees(username):
     rows = cursor.fetchall()
     conn.close()
     return [row[0] for row in rows]
+
+def add_extra_employee(username, employee_id, extra_type):
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('INSERT OR IGNORE INTO extra_employees (username, employee_id, extra_type) VALUES (?, ?, ?)', (username, employee_id, extra_type))
+    conn.commit()
+    conn.close()
+
+def remove_extra_employee(username, employee_id):
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('DELETE FROM extra_employees WHERE username = ? AND employee_id = ?', (username, employee_id))
+    conn.commit()
+    conn.close()
+
+def get_extra_employees(username):
+    conn = sqlite3.connect('favorites.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT employee_id, extra_type FROM extra_employees WHERE username = ?', (username,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"id": row[0], "extra_type": row[1]} for row in rows]
 
 # Initialize DB on startup
 init_db()
@@ -156,7 +182,8 @@ async def get_my_employees(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="Invalid token")
     username = session["name"]
     favorites = get_favorite_employees(username)
-    return {"favorites": favorites}
+    extra_emps = get_extra_employees(username)
+    return {"favorites": favorites, "extra_employees": extra_emps}
 
 @app.post("/my-employees/save")
 async def save_my_employee(data: dict, authorization: Optional[str] = Header(None)):
@@ -183,6 +210,34 @@ async def remove_my_employee(data: dict, authorization: Optional[str] = Header(N
         raise HTTPException(status_code=400, detail="employee_id required")
     remove_favorite_employee(username, employee_id)
     return {"success": True}
+
+@app.post("/my-extra-employees/save")
+async def save_extra_employee(data: dict, authorization: Optional[str] = Header(None)):
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    username = session["name"]
+    employee_id = data.get("employee_id")
+    extra_type = data.get("extra_type")
+    if not employee_id or not extra_type:
+        raise HTTPException(status_code=400, detail="employee_id and extra_type required")
+    add_extra_employee(username, employee_id, extra_type)
+    return {"success": True}
+
+@app.delete("/my-extra-employees/remove")
+async def remove_extra_employee(data: dict, authorization: Optional[str] = Header(None)):
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    username = session["name"]
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    remove_extra_employee(username, employee_id)
+    return {"success": True}
+
 
 @app.get("/departments")
 async def list_departments():
