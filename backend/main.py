@@ -13,7 +13,7 @@ import json
 import sqlite3
 from dotenv import load_dotenv
 import odoo_client
-
+print("CURRENT DIR:", os.getcwd())
 # Session хадгалах (token -> хэрэглэгчийн мэдээлэл)
 sessions = {}
 
