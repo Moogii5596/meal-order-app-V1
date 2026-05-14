@@ -237,6 +237,7 @@ function KitchenView({ token, userDept, userLocation }) {
 
           {showAddModal && (
             <AddEmployeeModal
+              favorites={favorites}
               onAdd={(emp, tab) => {
                 setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab}]);
                 setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
@@ -307,7 +308,7 @@ function KitchenView({ token, userDept, userLocation }) {
   );
 }
 
-function AddEmployeeModal({ onAdd, onClose }) {
+function AddEmployeeModal({ onAdd, onClose, favorites = [] }) {
   const [tab, setTab] = useState('sunasan'); // 'sunasan' | 'rental'
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
