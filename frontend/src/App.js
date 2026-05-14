@@ -128,8 +128,17 @@ function KitchenView({ token, userDept, userLocation }) {
     }
   }, [token]);
 
+  const isFavoriteEligible = (emp) => {
+    if (!emp?.is_extra) return false;
+    if (emp.extra_type === 'rental') return true;
+    if (emp.extra_type === 'sunasan' && emp.dept_name && selectedDeptName && emp.dept_name !== selectedDeptName) return true;
+    return false;
+  };
+
   const saveFavorite = (empId) => {
     if (!token) return;
+    const emp = [...employees, ...extraEmployees].find(e => e.id === empId);
+    if (!isFavoriteEligible(emp)) return;
     fetch(`${API}/my-employees/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -242,7 +251,7 @@ function KitchenView({ token, userDept, userLocation }) {
           )}
           <div className="table-header">
             <div className="table-info">
-              <strong>Миний ажилчид</strong> ({favorites.length})
+              <strong>Нэмэлт</strong> ({favorites.length})
             </div>
           </div>
           <div className="table-header">
@@ -303,7 +312,7 @@ function KitchenView({ token, userDept, userLocation }) {
                       disabled={emp.is_swiped} />
                   </td>
                   <td>{emp.last_name}</td>
-                  <td>{favorites.includes(emp.id) ? '⭐ ' : ''}{emp.name}</td>
+                  <td>{favorites.includes(emp.id) && emp.extra_type === 'rental' ? '⭐ ' : ''}{emp.name}</td>
                   <td>{emp.job_title}</td>
                   <td>
                     {LOCATION_LABELS[emp.location] || emp.location || '—'}
@@ -315,10 +324,12 @@ function KitchenView({ token, userDept, userLocation }) {
                       <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
                         Хасах
                       </button>
-                    ) : (
+                    ) : isFavoriteEligible(emp) ? (
                       <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>
                         Хадгалах
                       </button>
+                    ) : (
+                      <span style={{color:'#999'}}>—</span>
                     )}
                   </td>
                 </tr>
@@ -409,7 +420,7 @@ function AddEmployeeModal({ onAdd, onClose, favorites = [] }) {
             <tbody>
               {results.map(emp => (
                 <tr key={emp.id}>
-                  <td>{favorites.includes(emp.id) && "⭐"} {emp.last_name} {emp.name}</td>
+                  <td>{favorites.includes(emp.id) && tab === 'rental' ? '⭐ ' : ''}{emp.last_name} {emp.name}</td>
                   <td style={{fontSize:12, color:'#888'}}>{emp.dept_name}</td>
                   <td><button className="confirm-btn" onClick={() => { onAdd(emp, tab); onClose(); }}>Нэмэх</button></td>
                 </tr>
