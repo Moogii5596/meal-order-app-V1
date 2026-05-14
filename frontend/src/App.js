@@ -31,8 +31,9 @@ const MEAL_LABELS = {
 };
 
 const LOCATION_LABELS = {
-  uh: 'Ухаа худар',
+  uh: 'Ухаа худаг',
   bh: 'Баруун наран',
+  bn: 'Баруун наран',
   zas: 'Засвар',
   office: 'Оффис',
 };
