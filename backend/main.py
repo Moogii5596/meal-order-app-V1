@@ -48,6 +48,9 @@ async def login(data: LoginRequest):
             "role": result["role"],
             "name": result["name"]
         }
+        if "dept_id" in result:
+            sessions[token]["dept_id"] = result["dept_id"]
+            sessions[token]["dept_name"] = result["dept_name"]
         return {
             "success": True,
             "role": result["role"],
@@ -57,6 +60,19 @@ async def login(data: LoginRequest):
             "dept_name": result.get("dept_name")
         }
     return {"success": False}
+
+@app.get("/me")
+async def me(authorization: Optional[str] = Header(None)):
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = sessions.get(token) if token else None
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return {
+        "role": session["role"],
+        "name": session["name"],
+        "dept_id": session.get("dept_id"),
+        "dept_name": session.get("dept_name")
+    }
 
 @app.get("/departments")
 async def list_departments():

@@ -498,15 +498,34 @@ function App() {
   // Load auth state from localStorage on app start
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
-    const storedRole = localStorage.getItem('authRole');
-    const storedDeptId = localStorage.getItem('authDeptId');
-    const storedDeptName = localStorage.getItem('authDeptName');
-    if (storedToken && storedRole) {
-      setToken(storedToken);
-      setRole(storedRole);
-      if (storedDeptId && storedDeptName) {
-        setUserDept({ id: storedDeptId, name: storedDeptName });
-      }
+    if (storedToken) {
+      // Validate token by calling /me
+      fetch(`${API}/me`, {
+        headers: { 'Authorization': `Bearer ${storedToken}` }
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.role) {
+            setToken(storedToken);
+            setRole(data.role);
+            if (data.dept_id) {
+              setUserDept({ id: String(data.dept_id), name: data.dept_name });
+            }
+          } else {
+            // Invalid token, clear localStorage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authRole');
+            localStorage.removeItem('authDeptId');
+            localStorage.removeItem('authDeptName');
+          }
+        })
+        .catch(() => {
+          // Error, clear localStorage
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authRole');
+          localStorage.removeItem('authDeptId');
+          localStorage.removeItem('authDeptName');
+        });
     }
   }, []);
 
