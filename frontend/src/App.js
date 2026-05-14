@@ -54,6 +54,8 @@ function KitchenView({ token, userDept }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [extraEmployees, setExtraEmployees] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
@@ -115,10 +117,11 @@ function KitchenView({ token, userDept }) {
   // Байгаа location-уудыг динамикаар гаргах
   const locations = [...new Set(employees.map(e => e.location).filter(Boolean))];
 
-  // Location шүүлтүүр
-  const filteredEmployees = selectedLocation
+  // Location шүүлтүүр + сунасан ажилтнуудыг нэмнэ
+  const baseFiltered = selectedLocation
     ? employees.filter(e => e.location === selectedLocation)
     : employees;
+  const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))];
 
   const swipedCount = filteredEmployees.filter(e => e.is_swiped).length;
   const notSwipedCount = filteredEmployees.filter(e => !e.is_swiped).length;
@@ -174,8 +177,19 @@ function KitchenView({ token, userDept }) {
             <div>
               <button className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
               <button className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
+              <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Сунасан</button>
             </div>
           </div>
+
+          {showAddModal && (
+            <AddEmployeeModal
+              onAdd={(emp) => {
+                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true}]);
+                setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
+              }}
+              onClose={() => setShowAddModal(false)}
+            />
+          )}
           <table className="employee-table">
             <thead>
               <tr>
@@ -209,7 +223,7 @@ function KitchenView({ token, userDept }) {
                   <td>{emp.last_name}</td>
                   <td>{emp.name}</td>
                   <td>{emp.job_title}</td>
-                  <td>{LOCATION_LABELS[emp.location] || emp.location || '—'}</td>
+                  <td>{LOCATION_LABELS[emp.location] || emp.location || '—'}{emp.is_extra && <span style={{marginLeft:4, fontSize:11, color:'#1677ff'}}>(сунасан)</span>}</td>
                   <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
                 </tr>
               ))}
@@ -222,6 +236,57 @@ function KitchenView({ token, userDept }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function AddEmployeeModal({ onAdd, onClose }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  const search = () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    fetch(`${API}/employees/search?q=${encodeURIComponent(query)}`)
+      .then(r => r.json())
+      .then(data => { setResults(data); setSearching(false); })
+      .catch(() => setSearching(false));
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <strong>Сунасан ажилтан нэмэх</strong>
+          <button className="action-btn" onClick={onClose}>✕</button>
+        </div>
+        <div style={{display:'flex', gap:8, marginBottom:12}}>
+          <input
+            style={{flex:1, padding:'8px 12px', border:'1px solid #d9d9d9', borderRadius:6, fontSize:14}}
+            placeholder="Нэрээр хайх..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && search()}
+          />
+          <button className="approve-btn" onClick={search}>Хайх</button>
+        </div>
+        {searching && <div className="empty-state">Хайж байна...</div>}
+        {results.length > 0 && (
+          <table className="employee-table">
+            <thead><tr><th>Нэр</th><th>Хэлтэс</th><th>Нэмэх</th></tr></thead>
+            <tbody>
+              {results.map(emp => (
+                <tr key={emp.id}>
+                  <td>{emp.last_name} {emp.name}</td>
+                  <td style={{fontSize:12, color:'#888'}}>{emp.dept_name}</td>
+                  <td><button className="confirm-btn" onClick={() => { onAdd(emp); onClose(); }}>Нэмэх</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

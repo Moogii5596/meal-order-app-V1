@@ -199,6 +199,22 @@ def update_order_state(order_id, new_state):
 # -------------------------
 # Create order
 # -------------------------
+def search_employees_global(query):
+    uid, models = get_odoo_connection()
+    domain = [['name', 'ilike', query]]
+    employees = models.execute_kw(
+        DB, uid, PASSWORD,
+        'hr.employee', 'search_read',
+        [domain],
+        {'fields': ['id', 'name', 'last_name', 'job_id', 'department_id', 'location'], 'limit': 20}
+    )
+    for emp in employees:
+        emp['is_swiped'] = False
+        emp['job_title'] = emp['job_id'][1] if emp['job_id'] else 'Тодорхойгүй'
+        emp['dept_name'] = emp['department_id'][1] if emp['department_id'] else 'Тодорхойгүй'
+    return employees
+
+
 def create_meal_order(date, meal_type, employee_ids):
     uid, models = get_odoo_connection()
 
