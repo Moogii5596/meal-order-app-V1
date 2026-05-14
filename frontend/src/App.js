@@ -495,6 +495,21 @@ function App() {
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
 
+  // Load auth state from localStorage on app start
+  useEffect(() => {
+    const storedToken = localStorage.getItem('authToken');
+    const storedRole = localStorage.getItem('authRole');
+    const storedDeptId = localStorage.getItem('authDeptId');
+    const storedDeptName = localStorage.getItem('authDeptName');
+    if (storedToken && storedRole) {
+      setToken(storedToken);
+      setRole(storedRole);
+      if (storedDeptId && storedDeptName) {
+        setUserDept({ id: storedDeptId, name: storedDeptName });
+      }
+    }
+  }, []);
+
   const handleLogin = () => {
     fetch(`${API}/login`, {
       method: 'POST',
@@ -507,9 +522,27 @@ function App() {
           setRole(data.role);
           setToken(data.token);
           if (data.dept_id) setUserDept({ id: String(data.dept_id), name: data.dept_name });
+          // Store in localStorage
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('authRole', data.role);
+          if (data.dept_id) {
+            localStorage.setItem('authDeptId', String(data.dept_id));
+            localStorage.setItem('authDeptName', data.dept_name);
+          }
         } else alert('Нэвтрэх нэр эсвэл нууц үг буруу байна');
       })
       .catch(() => alert('Сервертэй холбогдож чадсангүй'));
+  };
+
+  const handleLogout = () => {
+    setRole(null);
+    setToken(null);
+    setUserDept(null);
+    // Clear localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authRole');
+    localStorage.removeItem('authDeptId');
+    localStorage.removeItem('authDeptName');
   };
 
   if (!role) {
@@ -535,7 +568,7 @@ function App() {
             <h1>Хоолны захиалга</h1>
             <span className="role-badge">{ROLE_LABELS[role]}</span>
           </div>
-          <button className="logout-btn" onClick={() => setRole(null)}>Гарах</button>
+          <button className="logout-btn" onClick={handleLogout}>Гарах</button>
         </div>
       </div>
 
