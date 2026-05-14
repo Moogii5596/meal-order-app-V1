@@ -185,8 +185,8 @@ function KitchenView({ token, userDept }) {
 
           {showAddModal && (
             <AddEmployeeModal
-              onAdd={(emp) => {
-                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true}]);
+              onAdd={(emp, tab) => {
+                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab}]);
                 setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
               }}
               onClose={() => setShowAddModal(false)}
@@ -225,7 +225,10 @@ function KitchenView({ token, userDept }) {
                   <td>{emp.last_name}</td>
                   <td>{emp.name}</td>
                   <td>{emp.job_title}</td>
-                  <td>{LOCATION_LABELS[emp.location] || emp.location || '—'}{emp.is_extra && <span style={{marginLeft:4, fontSize:11, color:'#1677ff'}}>(сунасан)</span>}</td>
+                  <td>
+                    {LOCATION_LABELS[emp.location] || emp.location || '—'}
+                    {emp.is_extra && <span style={{marginLeft:4, fontSize:11, color:'#1677ff'}}>({emp.extra_type === 'rental' ? 'түрээсийн' : 'сунасан'})</span>}
+                  </td>
                   <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
                 </tr>
               ))}
@@ -312,7 +315,7 @@ function AddEmployeeModal({ onAdd, onClose }) {
                 <tr key={emp.id}>
                   <td>{emp.last_name} {emp.name}</td>
                   <td style={{fontSize:12, color:'#888'}}>{emp.dept_name}</td>
-                  <td><button className="confirm-btn" onClick={() => { onAdd(emp); onClose(); }}>Нэмэх</button></td>
+                  <td><button className="confirm-btn" onClick={() => { onAdd(emp, tab); onClose(); }}>Нэмэх</button></td>
                 </tr>
               ))}
             </tbody>
