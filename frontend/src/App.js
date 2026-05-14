@@ -178,7 +178,7 @@ function KitchenView({ token, userDept }) {
           </div>
           <table className="employee-table">
             <thead>
-              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Тэсэн</th><th>Карт</th></tr>
+              <tr><th></th><th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th></tr>
             </thead>
             <tbody>
               {filteredEmployees.map(emp => (
