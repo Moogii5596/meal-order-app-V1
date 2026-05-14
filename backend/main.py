@@ -36,6 +36,11 @@ def init_db():
         username TEXT,
         employee_id INTEGER,
         extra_type TEXT,
+        name TEXT,
+        last_name TEXT,
+        dept_name TEXT,
+        job_title TEXT,
+        location TEXT,
         UNIQUE(username, employee_id)
     )''')
     conn.commit()
@@ -61,9 +66,10 @@ def get_favorite_employees(username):
     conn.close()
     return [row[0] for row in rows]
 
-def add_extra_employee(username, employee_id, extra_type):
+def add_extra_employee(username, employee_id, extra_type, name='', last_name='', dept_name='', job_title='', location=''):
     conn = sqlite3.connect('favorites.db')
-    conn.execute('INSERT OR IGNORE INTO extra_employees (username, employee_id, extra_type) VALUES (?, ?, ?)', (username, employee_id, extra_type))
+    conn.execute('INSERT OR IGNORE INTO extra_employees (username, employee_id, extra_type, name, last_name, dept_name, job_title, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+                 (username, employee_id, extra_type, name, last_name, dept_name, job_title, location))
     conn.commit()
     conn.close()
 
@@ -76,10 +82,10 @@ def remove_extra_employee(username, employee_id):
 def get_extra_employees(username):
     conn = sqlite3.connect('favorites.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT employee_id, extra_type FROM extra_employees WHERE username = ?', (username,))
+    cursor.execute('SELECT employee_id, extra_type, name, last_name, dept_name, job_title, location FROM extra_employees WHERE username = ?', (username,))
     rows = cursor.fetchall()
     conn.close()
-    return [{"id": row[0], "extra_type": row[1]} for row in rows]
+    return [{"id": row[0], "extra_type": row[1], "name": row[2], "last_name": row[3], "dept_name": row[4], "job_title": row[5], "location": row[6]} for row in rows]
 
 # Initialize DB on startup
 init_db()
@@ -220,9 +226,14 @@ async def save_extra_employee(data: dict, authorization: Optional[str] = Header(
     username = session["name"]
     employee_id = data.get("employee_id")
     extra_type = data.get("extra_type")
+    name = data.get("name", "")
+    last_name = data.get("last_name", "")
+    dept_name = data.get("dept_name", "")
+    job_title = data.get("job_title", "")
+    location = data.get("location", "")
     if not employee_id or not extra_type:
         raise HTTPException(status_code=400, detail="employee_id and extra_type required")
-    add_extra_employee(username, employee_id, extra_type)
+    add_extra_employee(username, employee_id, extra_type, name, last_name, dept_name, job_title, location)
     return {"success": True}
 
 @app.delete("/my-extra-employees/remove")

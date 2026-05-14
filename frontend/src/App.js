@@ -296,7 +296,15 @@ function KitchenView({ token, userDept, userLocation }) {
                   fetch(`${API}/my-extra-employees/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ employee_id: emp.id, extra_type: tab })
+                    body: JSON.stringify({ 
+                      employee_id: emp.id, 
+                      extra_type: tab,
+                      name: emp.name,
+                      last_name: emp.last_name,
+                      dept_name: emp.dept_name,
+                      job_title: emp.job_title,
+                      location: emp.location
+                    })
                   }).catch(console.error);
                 }
               }}
