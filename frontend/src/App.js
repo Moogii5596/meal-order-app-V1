@@ -73,10 +73,7 @@ function KitchenView({ token, userDept, userLocation }) {
     }
     // Set selectedLocation to user's location
     if (userLocation) {
-      const userLocationKey = Object.keys(LOCATION_LABELS).find(key => LOCATION_LABELS[key] === userLocation);
-      if (userLocationKey) {
-        setSelectedLocation(userLocationKey);
-      }
+      setSelectedLocation(userLocation);
     }
   }, [userDept, userLocation]);
 
@@ -96,10 +93,7 @@ function KitchenView({ token, userDept, userLocation }) {
         let employees = data.employees || [];
         // Filter by user location if set
         if (userLocation) {
-          const userLocationKey = Object.keys(LOCATION_LABELS).find(key => LOCATION_LABELS[key] === userLocation);
-          if (userLocationKey) {
-            employees = employees.filter(e => e.location === userLocationKey);
-          }
+          employees = employees.filter(e => e.location === userLocation);
         }
         setEmployees(employees);
         if (autoSelect) {
