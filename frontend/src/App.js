@@ -114,7 +114,7 @@ function KitchenView({ token, userDept, userLocation }) {
       });
   }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
 
-  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+  useEffect(() => { loadEmployees(); }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
 
   // Fetch favorites on load
   useEffect(() => {
@@ -160,7 +160,10 @@ function KitchenView({ token, userDept, userLocation }) {
       })
     ))
       .then(() => {
-        setFavorites(prev => [...new Set([...prev, ...idsToSave])]);
+        setFavorites(prev => {
+          const next = [...new Set([...prev, ...idsToSave])];
+          return next;
+        });
         showToast('Ээлж амжилттай хадгалагдлаа');
       })
       .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
@@ -251,9 +254,9 @@ function KitchenView({ token, userDept, userLocation }) {
               <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
             </div>
             <div>
-              <button className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
-              <button className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
-              <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
+              <button type="button" className="action-btn" onClick={() => setSelectedEmployees(filteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
+              <button type="button" className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
+              <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
             </div>
           </div>
 
@@ -300,7 +303,7 @@ function KitchenView({ token, userDept, userLocation }) {
                       disabled={emp.is_swiped} />
                   </td>
                   <td>{emp.last_name}</td>
-                  <td>{emp.name}</td>
+                  <td>{favorites.includes(emp.id) ? '⭐ ' : ''}{emp.name}</td>
                   <td>{emp.job_title}</td>
                   <td>
                     {LOCATION_LABELS[emp.location] || emp.location || '—'}
@@ -309,11 +312,11 @@ function KitchenView({ token, userDept, userLocation }) {
                   <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
                   <td>
                     {favorites.includes(emp.id) ? (
-                      <button className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
+                      <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
                         Хасах
                       </button>
                     ) : (
-                      <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>
+                      <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>
                         Хадгалах
                       </button>
                     )}
@@ -324,10 +327,10 @@ function KitchenView({ token, userDept, userLocation }) {
           </table>
           {selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length > 0 && (
             <div style={{display:'flex', gap: '10px', flexWrap: 'wrap'}}>
-              <button className="submit-btn" onClick={submitOrder}>
+              <button type="button" className="submit-btn" onClick={submitOrder}>
                 Захиалга илгээх ({selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length} ажилтан)
               </button>
-              <button className="approve-btn" onClick={saveShift}>
+              <button type="button" className="approve-btn" onClick={saveShift}>
                 Ээлж хадгалах
               </button>
             </div>
