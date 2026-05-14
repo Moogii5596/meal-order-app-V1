@@ -273,7 +273,7 @@ function KitchenView({ token, userDept, userLocation }) {
             <AddEmployeeModal
               favorites={favorites}
               onAdd={(emp, tab) => {
-                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab}]);
+                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab, is_swiped: false}]);
                 setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
               }}
               onClose={() => setShowAddModal(false)}
