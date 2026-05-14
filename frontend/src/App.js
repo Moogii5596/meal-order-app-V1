@@ -129,19 +129,41 @@ function KitchenView({ token, userDept, userLocation }) {
   }, [token]);
 
   const saveFavorite = (empId) => {
+    if (!token) return;
     fetch(`${API}/my-employees/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ employee_id: empId })
-    }).then(() => setFavorites(prev => [...prev, empId]));
+    }).then(() => setFavorites(prev => prev.includes(empId) ? prev : [...prev, empId]));
   };
 
   const removeFavorite = (empId) => {
+    if (!token) return;
     fetch(`${API}/my-employees/remove`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ employee_id: empId })
     }).then(() => setFavorites(prev => prev.filter(id => id !== empId)));
+  };
+
+  const saveShift = () => {
+    const idsToSave = selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id));
+    if (idsToSave.length === 0) {
+      showToast('Эхлээд ажилтнуудыг сонгоно уу', 'error');
+      return;
+    }
+    Promise.all(idsToSave.map(empId =>
+      fetch(`${API}/my-employees/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ employee_id: empId })
+      })
+    ))
+      .then(() => {
+        setFavorites(prev => [...new Set([...prev, ...idsToSave])]);
+        showToast('Ээлж амжилттай хадгалагдлаа');
+      })
+      .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
   };
 
   const submitOrder = () => {
@@ -262,7 +284,7 @@ function KitchenView({ token, userDept, userLocation }) {
                     }}
                   />
                 </th>
-                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th>
+                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th><th>Fav</th>
               </tr>
             </thead>
             <tbody>
@@ -271,36 +293,44 @@ function KitchenView({ token, userDept, userLocation }) {
                   <td>
                     <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
                       onChange={() => {
-                        const wasSelected = selectedEmployees.includes(emp.id);
                         setSelectedEmployees(prev =>
                           prev.includes(emp.id) ? prev.filter(x => x !== emp.id) : [...prev, emp.id]
                         );
-                        if (!wasSelected) {
-                          // Now selected, save favorite
-                          saveFavorite(emp.id);
-                        } else {
-                          // Now deselected, remove favorite
-                          removeFavorite(emp.id);
-                        }
                       }}
                       disabled={emp.is_swiped} />
                   </td>
                   <td>{emp.last_name}</td>
-                  <td>{favorites.includes(emp.id) && "⭐"} {emp.name}</td>
+                  <td>{emp.name}</td>
                   <td>{emp.job_title}</td>
                   <td>
                     {LOCATION_LABELS[emp.location] || emp.location || '—'}
                     {emp.is_extra && <span style={{marginLeft:4, fontSize:11, color:'#1677ff'}}>({emp.extra_type === 'rental' ? 'түрээсийн' : 'сунасан'})</span>}
                   </td>
                   <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
+                  <td>
+                    {favorites.includes(emp.id) ? (
+                      <button className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
+                        Хасах
+                      </button>
+                    ) : (
+                      <button className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>
+                        Хадгалах
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length > 0 && (
-            <button className="submit-btn" onClick={submitOrder}>
-              Захиалга илгээх ({selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length} ажилтан)
-            </button>
+            <div style={{display:'flex', gap: '10px', flexWrap: 'wrap'}}>
+              <button className="submit-btn" onClick={submitOrder}>
+                Захиалга илгээх ({selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length} ажилтан)
+              </button>
+              <button className="approve-btn" onClick={saveShift}>
+                Ээлж хадгалах
+              </button>
+            </div>
           )}
         </div>
       )}
