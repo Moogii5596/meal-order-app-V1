@@ -202,10 +202,14 @@ async def get_rental_employees(q: str = ''):
     return await run(odoo_client.get_rental_employees, q)
 
 
+class OrderRequest(BaseModel):
+    employee_ids: List[int]
+
 @app.post("/create-order")
-async def create_order(date: str, meal_type: str, employee_ids: List[int], authorization: Optional[str] = Header(None)):
+async def create_order(date: str, meal_type: str, order: OrderRequest, authorization: Optional[str] = Header(None)):
     token = authorization.replace("Bearer ", "") if authorization else None
     session = get_session(token)
+    employee_ids = order.employee_ids
 
     if session:
         order_id = await run(odoo_client.create_meal_order_as_user, date, meal_type, employee_ids, session["uid"], session["password"])

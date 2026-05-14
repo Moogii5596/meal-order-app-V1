@@ -92,18 +92,9 @@ function KitchenView({ token, userDept, userLocation }) {
       .then(r => r.json())
       .then(data => {
         let employees = data.employees || [];
-        // Filter by user location if set
         if (userLocation) {
           employees = employees.filter(e => e.location?.trim().toLowerCase() === userLocation.trim().toLowerCase());
         }
-        // Sort favorites first
-        employees.sort((a, b) => {
-          const aFav = favorites.includes(a.id);
-          const bFav = favorites.includes(b.id);
-          if (aFav && !bFav) return -1;
-          if (!aFav && bFav) return 1;
-          return 0;
-        });
         setEmployees(employees);
         if (autoSelect) {
           setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id));
@@ -112,7 +103,7 @@ function KitchenView({ token, userDept, userLocation }) {
         }
         setLoading(false);
       });
-  }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
+  }, [selectedDept, selectedDate, selectedMeal, userLocation]);
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
@@ -156,12 +147,17 @@ function KitchenView({ token, userDept, userLocation }) {
   };
 
   const saveShift = () => {
-    const idsToSave = selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id));
-    if (idsToSave.length === 0) {
-      showToast('Эхлээд ажилтнуудыг сонгоно уу', 'error');
+    const eligibleIds = selectedEmployees
+      .map(id => [...employees, ...extraEmployees].find(e => e.id === id))
+      .filter(emp => emp && isFavoriteEligible(emp))
+      .map(emp => emp.id);
+
+    if (eligibleIds.length === 0) {
+      showToast('Ээлж хадгалахын тулд зөв ажилтнуудыг сонгоно уу', 'error');
       return;
     }
-    Promise.all(idsToSave.map(empId =>
+
+    Promise.all(eligibleIds.map(empId =>
       fetch(`${API}/my-employees/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -169,10 +165,7 @@ function KitchenView({ token, userDept, userLocation }) {
       })
     ))
       .then(() => {
-        setFavorites(prev => {
-          const next = [...new Set([...prev, ...idsToSave])];
-          return next;
-        });
+        setFavorites(prev => [...new Set([...prev, ...eligibleIds])]);
         showToast('Ээлж амжилттай хадгалагдлаа');
       })
       .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
@@ -205,9 +198,16 @@ function KitchenView({ token, userDept, userLocation }) {
     ? employees.filter(e => e.location === selectedLocation)
     : employees;
   const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))];
+  const sortedFilteredEmployees = [...filteredEmployees].sort((a, b) => {
+    const aFav = favorites.includes(a.id);
+    const bFav = favorites.includes(b.id);
+    if (aFav && !bFav) return -1;
+    if (!aFav && bFav) return 1;
+    return 0;
+  });
 
-  const swipedCount = filteredEmployees.filter(e => e.is_swiped).length;
-  const notSwipedCount = filteredEmployees.filter(e => !e.is_swiped).length;
+  const swipedCount = sortedFilteredEmployees.filter(e => e.is_swiped).length;
+  const notSwipedCount = sortedFilteredEmployees.filter(e => !e.is_swiped).length;
 
   return (
     <div>
@@ -300,7 +300,7 @@ function KitchenView({ token, userDept, userLocation }) {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map(emp => (
+              {sortedFilteredEmployees.map(emp => (
                 <tr key={emp.id} className={emp.is_swiped ? 'swiped-row' : ''}>
                   <td>
                     <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
@@ -336,10 +336,10 @@ function KitchenView({ token, userDept, userLocation }) {
               ))}
             </tbody>
           </table>
-          {selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length > 0 && (
+          {selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length > 0 && (
             <div style={{display:'flex', gap: '10px', flexWrap: 'wrap'}}>
               <button type="button" className="submit-btn" onClick={submitOrder}>
-                Захиалга илгээх ({selectedEmployees.filter(id => filteredEmployees.find(e => e.id === id)).length} ажилтан)
+                Захиалга илгээх ({selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length} ажилтан)
               </button>
               <button type="button" className="approve-btn" onClick={saveShift}>
                 Ээлж хадгалах
