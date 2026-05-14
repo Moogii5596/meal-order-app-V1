@@ -63,14 +63,18 @@ function KitchenView() {
     setEmployees([]);
   };
 
-  const loadEmployees = useCallback(() => {
+  const loadEmployees = useCallback((autoSelect = true) => {
     if (!selectedDept) return;
     setLoading(true);
     fetch(`${API}/employees?dept_id=${selectedDept}&date=${selectedDate}&meal_type=${selectedMeal}`)
       .then(r => r.json())
       .then(data => {
         setEmployees(data.employees || []);
-        setSelectedEmployees((data.employees || []).filter(e => !e.is_swiped).map(e => e.id));
+        if (autoSelect) {
+          setSelectedEmployees((data.employees || []).filter(e => !e.is_swiped).map(e => e.id));
+        } else {
+          setSelectedEmployees([]);
+        }
         setLoading(false);
       });
   }, [selectedDept, selectedDate, selectedMeal]);
@@ -86,7 +90,7 @@ function KitchenView() {
       .then(r => r.json())
       .then(() => {
         showToast(`${MEAL_LABELS[selectedMeal]} захиалга амжилттай илгээгдлээ ✓`);
-        loadEmployees();
+        loadEmployees(false);
       })
       .catch(() => showToast('Алдаа гарлаа', 'error'));
   };
