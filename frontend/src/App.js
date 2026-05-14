@@ -114,7 +114,7 @@ function KitchenView({ token, userDept, userLocation }) {
       });
   }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
 
-  useEffect(() => { loadEmployees(); }, [selectedDept, selectedDate, selectedMeal, userLocation, favorites]);
+  useEffect(() => { loadEmployees(); }, [loadEmployees]);
 
   // Fetch favorites on load
   useEffect(() => {
