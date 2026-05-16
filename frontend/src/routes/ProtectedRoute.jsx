@@ -31,11 +31,7 @@ function ProtectedRoute({
     allowedRoles &&
     !allowedRoles.includes(role)
   ) {
-    return (
-      <div className="login-box">
-        Хандах эрхгүй
-      </div>
-    );
+    return null;
   }
 
   return children;
