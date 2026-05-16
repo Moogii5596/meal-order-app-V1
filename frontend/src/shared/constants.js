@@ -7,12 +7,6 @@ export const MEAL_LABELS = {
   night: 'Шөнийн хоол',
 };
 
-export const STATE_TABS = [
-  { key: 'draft', label: 'Ноорог' },
-  { key: 'done', label: 'Батлагдсан' },
-  { key: 'confirmed', label: 'Баталгаажсан' },
-  { key: 'canceled', label: 'Цуцалсан' },
-];
 export const LOCATION_LABELS = {
   uh: 'Ухаа худаг',
   bh: 'Баруун наран',
@@ -20,3 +14,10 @@ export const LOCATION_LABELS = {
   zas: 'Засвар',
   office: 'Оффис',
 };
+
+export const STATE_TABS = [
+  { key: 'draft', label: 'Ноорог' },
+  { key: 'done', label: 'Батлагдсан' },
+  { key: 'confirmed', label: 'Баталгаажсан' },
+  { key: 'canceled', label: 'Цуцалсан' },
+];
