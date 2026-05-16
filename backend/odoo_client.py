@@ -182,13 +182,62 @@ def get_order_detail(order_id):
         lines = models.execute_kw(
             DB, uid, PASSWORD,
             'meal.order.line', 'read', [line_ids],
-            {'fields': ['employee_id']}
+            {'fields': ['employee_id', 'department_id']}
         )
         employees = [
-            {'id': l['employee_id'][0], 'name': l['employee_id'][1]}
+            {
+                'id': l['employee_id'][0],
+                'name': l['employee_id'][1],
+                'line_id': l['id'],
+                'dept_name': l['department_id'][1] if l.get('department_id') else ''
+            }
             for l in lines if l['employee_id']
         ]
     return {**order[0], 'employees': employees}
+
+
+def update_order_lines(order_id, employee_ids):
+    """Захиалгын ажилтны жагсаалтыг шинэчлэх — нэмэх, устгах."""
+    uid, models = get_odoo_connection()
+    order = models.execute_kw(
+        DB, uid, PASSWORD,
+        'meal.order', 'read', [[order_id]],
+        {'fields': ['order_line']}
+    )
+    if not order:
+        return False
+
+    current_line_ids = order[0]['order_line']
+    current_emp_to_line = {}
+    if current_line_ids:
+        lines = models.execute_kw(
+            DB, uid, PASSWORD,
+            'meal.order.line', 'read', [current_line_ids],
+            {'fields': ['employee_id']}
+        )
+        current_emp_to_line = {
+            l['employee_id'][0]: l['id']
+            for l in lines if l['employee_id']
+        }
+
+    current_emp_ids = set(current_emp_to_line.keys())
+    target_emp_ids = set(employee_ids)
+    to_delete = current_emp_ids - target_emp_ids
+    to_add = target_emp_ids - current_emp_ids
+
+    commands = []
+    for emp_id in to_delete:
+        commands.append((2, current_emp_to_line[emp_id], 0))   # устгах
+    for emp_id in to_add:
+        commands.append((0, 0, {'employee_id': emp_id}))         # нэмэх
+
+    if commands:
+        models.execute_kw(
+            DB, uid, PASSWORD,
+            'meal.order', 'write',
+            [[order_id], {'order_line': commands}]
+        )
+    return True
 
 
 def update_order_state(order_id, new_state):

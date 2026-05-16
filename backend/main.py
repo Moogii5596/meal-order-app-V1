@@ -121,8 +121,52 @@ def get_extra_employees(username):
     conn.close()
     return [{"id": row[0], "extra_type": row[1], "name": row[2], "last_name": row[3], "dept_name": row[4], "job_title": row[5], "location": row[6]} for row in rows]
 
+# ── Users хянах table ──
+def init_users_table():
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('''CREATE TABLE IF NOT EXISTS users (
+        username TEXT PRIMARY KEY,
+        role TEXT,
+        dept_id INTEGER,
+        dept_name TEXT,
+        location TEXT,
+        last_login TEXT
+    )''')
+    conn.commit()
+    conn.close()
+
+def upsert_user(username, role, dept_id=None, dept_name=None, location=None):
+    from datetime import datetime as _dt
+    conn = sqlite3.connect('favorites.db')
+    conn.execute(
+        '''INSERT OR REPLACE INTO users (username, role, dept_id, dept_name, location, last_login)
+           VALUES (?, ?, ?, ?, ?, ?)''',
+        (username, role, dept_id, dept_name, location, _dt.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+def get_all_users(roles=None):
+    conn = sqlite3.connect('favorites.db')
+    cursor = conn.cursor()
+    if roles:
+        placeholders = ','.join(['?' for _ in roles])
+        cursor.execute(
+            f'SELECT username, role, dept_id, dept_name, location, last_login FROM users WHERE role IN ({placeholders})',
+            roles
+        )
+    else:
+        cursor.execute('SELECT username, role, dept_id, dept_name, location, last_login FROM users')
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {'username': r[0], 'role': r[1], 'dept_id': r[2], 'dept_name': r[3], 'location': r[4], 'last_login': r[5]}
+        for r in rows
+    ]
+
 # Initialize DB on startup
 init_db()
+init_users_table()
 
 app.add_middleware(
     CORSMiddleware,
@@ -189,6 +233,11 @@ async def login(data: LoginRequest):
         }
         token = encode_token(auth_data)
         sessions[token] = auth_data
+        # Нэвтэрсэн хэрэглэгчийг бүртгэнэ (camp_manager харах боломжтой болно)
+        upsert_user(
+            result["name"], result["role"],
+            result.get("dept_id"), result.get("dept_name"), result.get("location")
+        )
         return {
             "success": True,
             "role": result["role"],
@@ -377,4 +426,100 @@ async def approve_order(order_id: int):
 @app.post("/orders/{order_id}/confirm")
 async def confirm_order(order_id: int):
     await run(odoo_client.update_order_state, order_id, "confirmed")
+    return {"success": True}
+
+
+# ══════════════════════════════════════════════
+#  CAMP MANAGER endpoints
+# ══════════════════════════════════════════════
+
+def require_camp_manager(authorization: Optional[str]):
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session or session.get("role") != "camp_manager":
+        raise HTTPException(status_code=403, detail="Camp manager эрх шаардлагатай")
+    return session
+
+# ── Бүх хэрэглэгчдийн жагсаалт ──
+@app.get("/camp/users")
+async def camp_get_users(authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    users = get_all_users(roles=['kitchen_staff', 'category_manager'])
+    # Fav болон extra тоог нэмнэ
+    for u in users:
+        u['fav_count'] = len(get_favorite_employees(u['username']))
+        u['extra_count'] = len(get_extra_employees(u['username']))
+    return users
+
+# ── Тухайн хэрэглэгчийн fav+extra жагсаалт ──
+@app.get("/camp/user-data/{username}")
+async def camp_get_user_data(username: str, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    favorites = get_favorite_employees(username)
+    extras = get_extra_employees(username)
+    hidden = get_hidden_employees(username)
+    return {"favorites": favorites, "extra_employees": extras, "hidden": hidden}
+
+# ── Хэрэглэгчийн fav-д ажилтан нэмэх ──
+@app.post("/camp/user-data/{username}/fav/save")
+async def camp_save_user_fav(username: str, data: dict, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    save_favorite_employee(username, employee_id)
+    return {"success": True}
+
+# ── Хэрэглэгчийн fav-аас ажилтан хасах ──
+@app.delete("/camp/user-data/{username}/fav/remove")
+async def camp_remove_user_fav(username: str, data: dict, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    remove_favorite_employee(username, employee_id)
+    return {"success": True}
+
+# ── Хэрэглэгчийн extra-д ажилтан нэмэх ──
+@app.post("/camp/user-data/{username}/extra/save")
+async def camp_save_user_extra(username: str, data: dict, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    employee_id = data.get("employee_id")
+    extra_type = data.get("extra_type", "rental")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    add_extra_employee(
+        username, employee_id, extra_type,
+        data.get("name", ""), data.get("last_name", ""),
+        data.get("dept_name", ""), data.get("job_title", ""), data.get("location", "")
+    )
+    return {"success": True}
+
+# ── Хэрэглэгчийн extra-аас ажилтан хасах ──
+@app.delete("/camp/user-data/{username}/extra/remove")
+async def camp_remove_user_extra(username: str, data: dict, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    remove_extra_employee(username, employee_id)
+    return {"success": True}
+
+# ── Хэрэглэгчийн бүх fav/extra/hidden цэвэрлэх ──
+@app.delete("/camp/user-data/{username}/clear")
+async def camp_clear_user_data(username: str, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    clear_all_user_data(username)
+    return {"success": True}
+
+# ── Захиалгын ажилтны жагсаалт шинэчлэх ──
+class OrderLinesRequest(BaseModel):
+    employee_ids: List[int]
+
+@app.patch("/orders/{order_id}/lines")
+async def update_order_lines(order_id: int, data: OrderLinesRequest, authorization: Optional[str] = Header(None)):
+    require_camp_manager(authorization)
+    ok = await run(odoo_client.update_order_lines, order_id, data.employee_ids)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Захиалга олдсонгүй")
     return {"success": True}
