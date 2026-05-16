@@ -13,3 +13,10 @@ export const STATE_TABS = [
   { key: 'confirmed', label: 'Баталгаажсан' },
   { key: 'canceled', label: 'Цуцалсан' },
 ];
+export const LOCATION_LABELS = {
+  uh: 'Ухаа худаг',
+  bh: 'Баруун наран',
+  bn: 'Баруун наран',
+  zas: 'Засвар',
+  office: 'Оффис',
+};
