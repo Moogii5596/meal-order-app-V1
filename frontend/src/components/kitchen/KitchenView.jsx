@@ -66,6 +66,17 @@
     };
 
     useEffect(() => {
+  if (
+    favorites.length === 0 &&
+    employees.length > 0
+  ) {
+    setFavorites(
+      employees.map(e => e.id)
+    );
+  }
+}, [employees, favorites, setFavorites]);
+
+    useEffect(() => {
       if (extraEmployees.length === 0) return;
       setSelectedEmployees(prev => {
         const newIds = extraEmployees.filter(e => !e.is_swiped).map(e => e.id);
