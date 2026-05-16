@@ -14,7 +14,6 @@ export function useEmployees({
   selectedDept,
   selectedDate,
   selectedMeal,
-  token,
   userLocation
 }) {
 
@@ -46,7 +45,6 @@ export function useEmployees({
         selectedDept,
         selectedDate,
         selectedMeal,
-        token,
         controller.signal
       )
         .then(data => {
@@ -83,7 +81,6 @@ export function useEmployees({
       selectedDept,
       selectedDate,
       selectedMeal,
-      token,
       userLocation
     ]
   );
@@ -103,11 +100,9 @@ export function useEmployees({
   // MY EMPLOYEES
   // ─────────────────────────────
   useEffect(() => {
-    if (!token) return;
 
     const controller = new AbortController();
-
-    fetchMyEmployees(token, controller.signal)
+    fetchMyEmployees(controller.signal)
       .then(data => {
 
         setFavorites(
@@ -148,7 +143,7 @@ export function useEmployees({
     return () => {
       controller.abort();
     };
-  }, [token]);
+  }, []);
 
   return {
 
