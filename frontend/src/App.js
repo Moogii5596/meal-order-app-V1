@@ -117,7 +117,17 @@ function KitchenView({ token, userDept, userLocation }) {
         .then(data => {
           setFavorites(data.favorites || []);
           const extras = data.extra_employees || [];
-          setExtraEmployees(extras.map(e => ({ id: e.id, extra_type: e.extra_type, is_extra: true, is_swiped: false })));
+          setExtraEmployees(extras.map(e => ({
+            id: e.id,
+            extra_type: e.extra_type,
+            name: e.name || '',
+            last_name: e.last_name || '',
+            dept_name: e.dept_name || '',
+            job_title: e.job_title || '',
+            location: e.location || '',
+            is_extra: true,
+            is_swiped: false
+          })));
         })
         .catch(() => {
           setFavorites([]);
@@ -745,46 +755,6 @@ function App() {
     return (
       <div className="login-box">
         <h1>Camp Meal Login</h1>
-        <div className="empty-state">Шалгаж байна...</div>
-      </div>
-    );
-  }
-
-  if (!role) {
-    return (
-      <div className="login-box">
-        <h1>Camp Meal Login</h1>
-        <input type="text" placeholder="Нэвтрэх нэр" value={loginName}
-          onChange={e => setLoginName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleLogin()} />
-        <input type="password" placeholder="Нууц үг" value={loginPass}
-          onChange={e => setLoginPass(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleLogin()} />
-        <button className="login-btn" onClick={handleLogin}>Нэвтрэх</button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="App">
-      <div className="App-header">
-        <div className="header-row">
-          <div>
-            <h1>Хоолны захиалга</h1>
-            <span className="role-badge">{ROLE_LABELS[role]}</span>
-          </div>
-          <button className="logout-btn" onClick={handleLogout}>Гарах</button>
-        </div>
-      </div>
-
-      <KitchenView token={token} userDept={userDept} userLocation={userLocation} />
-      {role !== 'kitchen_staff' && <OrdersView role={role} />}
-    </div>
-  );
-}
-
-export default App;
-p Meal Login</h1>
         <div className="empty-state">Шалгаж байна...</div>
       </div>
     );
