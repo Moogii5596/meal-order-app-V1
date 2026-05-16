@@ -3,6 +3,8 @@ import ssl
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import socket
+socket.setdefaulttimeout(30)
 
 load_dotenv()
 
@@ -14,20 +16,16 @@ USERNAME = os.getenv("ODOO_USERNAME")
 PASSWORD = os.getenv("ODOO_PASSWORD")
 
 # Cache (performance сайжруулалт)
-_uid = None
-_models = None
 
-def get_odoo_connection():
-    global _uid, _models
-
-    if _uid and _models:
-        return _uid, _models
-
-    common = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/common', context=context)
-    _uid = common.authenticate(DB, USERNAME, PASSWORD, {})
-    _models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
-
-    return _uid, _models
+def get_odoo_connection(): 
+    common = xmlrpc.client.ServerProxy( 
+        f'{URL}/xmlrpc/common', 
+        context=context ) 
+    uid = common.authenticate( DB, USERNAME, PASSWORD, {} ) 
+    models = xmlrpc.client.ServerProxy( 
+        f'{URL}/xmlrpc/object', 
+        context=context ) 
+    return uid, models
 
 
 # Хэрэглэгчийг Odoo-д нэвтрүүлж дүрийг access group-аар тодорхойлно

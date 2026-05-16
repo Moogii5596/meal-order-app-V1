@@ -378,9 +378,34 @@ async def list_departments():
     return await run(odoo_client.get_departments)
 
 @app.get("/employees")
-async def list_employees(dept_id: int, date: str, meal_type: str):
-    employees = await run(odoo_client.get_employees_by_department, dept_id, date, meal_type)
-    return {"employees": employees}
+async def list_employees(
+    dept_id: int,
+    date: str,
+    meal_type: str
+):
+
+    try:
+
+        employees = await run(
+            odoo_client.get_employees_by_department,
+            dept_id,
+            date,
+            meal_type
+        )
+
+        return {
+            "employees": employees
+        }
+
+    except Exception as e:
+
+        print("EMPLOYEE FETCH ERROR:", str(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Employee fetch failed"
+        )
+
 
 @app.get("/employees/search")
 async def search_employees(q: str):
