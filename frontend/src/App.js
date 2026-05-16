@@ -203,7 +203,10 @@ function App() {
           />
 
           {role !== 'kitchen_staff' && (
-            <OrdersView role={role} />
+            <OrdersView
+  role={role}
+  token={token}
+/>
           )}
         </>
       )}
