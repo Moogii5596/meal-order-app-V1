@@ -1,51 +1,25 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback
-} from 'react';
-
+import React, { useState, useEffect, useCallback} from 'react';
 import OrderModal from './OrderModal';
 import Toast from '../ui/Toast';
-
-import { useToast }
-  from '../../hooks/useToast';
-
-import {
-  MEAL_LABELS,
-  STATE_TABS,
-} from '../../shared/constants';
-
-import {
-  fetchOrders,
-  approveOrder,
-  confirmOrder,
-  rejectOrder,
-  deleteOrder,
-  fetchOrderDetail
-} from '../../services/orders';
-
-import { useAuth }
-  from '../../context/AuthContext';
+import PageLoader from '../ui/PageLoader'; 
+import EmptyState from '../ui/EmptyState';
+import { useToast } from '../../hooks/useToast';
+import { MEAL_LABELS, STATE_TABS,} from '../../shared/constants';
+import { fetchOrders, approveOrder, confirmOrder, rejectOrder, deleteOrder, fetchOrderDetail } from '../../services/orders';
+import { useAuth } from '../../context/AuthContext';
 
 function OrdersView() {
-
   const { role } = useAuth();
-
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [activeTab, setActiveTab] =
     useState('draft');
-
   const [filterDate, setFilterDate] =
     useState('');
-
   const [filterMeal, setFilterMeal] =
     useState('');
-
   const [selectedOrder, setSelectedOrder] =
     useState(null);
-
   const {
     toast,
     showToast,
@@ -56,26 +30,20 @@ function OrdersView() {
   // LOAD ORDERS
   // ─────────────────────────────
   const loadOrders = useCallback(() => {
-
     setLoading(true);
-
     fetchOrders({
       date: filterDate,
       mealType: filterMeal
     })
       .then(data => {
-
         if (Array.isArray(data)) {
           setOrders(data);
         } else {
           setOrders([]);
         }
-
       })
       .catch(err => {
-
         console.error(err);
-
         showToast(
           'Захиалга ачаалж чадсангүй',
           'error'
@@ -259,9 +227,7 @@ function OrdersView() {
   if (loading) {
 
     return (
-      <div className="empty-state">
-        Ачаалж байна...
-      </div>
+      <PageLoader />
     );
 
   }
@@ -330,9 +296,9 @@ function OrdersView() {
 
       {/* EMPTY */}
       {filteredOrders.length === 0 && (
-        <div className="empty-state">
-          Захиалга олдсонгүй
-        </div>
+        <EmptyState 
+         message="Захиалга олдсонгүй" 
+        />
       )}
 
       {/* TABLE */}
