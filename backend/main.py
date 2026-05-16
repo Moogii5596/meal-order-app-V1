@@ -43,8 +43,33 @@ def init_db():
         location TEXT,
         UNIQUE(username, employee_id)
     )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS hidden_employees (
+        username TEXT,
+        employee_id INTEGER,
+        UNIQUE(username, employee_id)
+    )''')
     conn.commit()
     conn.close()
+
+def add_hidden_employee(username, employee_id):
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('INSERT OR IGNORE INTO hidden_employees (username, employee_id) VALUES (?, ?)', (username, employee_id))
+    conn.commit()
+    conn.close()
+
+def remove_hidden_employee(username, employee_id):
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('DELETE FROM hidden_employees WHERE username = ? AND employee_id = ?', (username, employee_id))
+    conn.commit()
+    conn.close()
+
+def get_hidden_employees(username):
+    conn = sqlite3.connect('favorites.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT employee_id FROM hidden_employees WHERE username = ?', (username,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
 
 def save_favorite_employee(username, employee_id):
     conn = sqlite3.connect('favorites.db')
@@ -80,10 +105,11 @@ def remove_extra_employee(username, employee_id):
     conn.close()
 
 def clear_all_user_data(username):
-    """Хэрэглэгчийн бүх favorites болон extra ажилчдыг устгана."""
+    """Хэрэглэгчийн бүх favorites, extra болон hidden ажилчдыг устгана."""
     conn = sqlite3.connect('favorites.db')
     conn.execute('DELETE FROM favorite_employees WHERE username = ?', (username,))
     conn.execute('DELETE FROM extra_employees WHERE username = ?', (username,))
+    conn.execute('DELETE FROM hidden_employees WHERE username = ?', (username,))
     conn.commit()
     conn.close()
 
@@ -197,7 +223,8 @@ async def get_my_employees(authorization: Optional[str] = Header(None)):
     username = session["name"]
     favorites = get_favorite_employees(username)
     extra_emps = get_extra_employees(username)
-    return {"favorites": favorites, "extra_employees": extra_emps}
+    hidden = get_hidden_employees(username)
+    return {"favorites": favorites, "extra_employees": extra_emps, "hidden": hidden}
 
 @app.post("/my-employees/save")
 async def save_my_employee(data: dict, authorization: Optional[str] = Header(None)):
@@ -259,13 +286,41 @@ async def remove_extra_employee(data: dict, authorization: Optional[str] = Heade
 
 @app.delete("/my-employees/clear-all")
 async def clear_my_employees(authorization: Optional[str] = Header(None)):
-    """Ээлж шинэчлэх: хэрэглэгчийн бүх favorites болон extra ажилчдыг устгана."""
+    """Ээлж шинэчлэх: хэрэглэгчийн бүх favorites, extra болон hidden ажилчдыг устгана."""
     token = authorization.replace("Bearer ", "") if authorization else None
     session = get_session(token)
     if not session:
         raise HTTPException(status_code=401, detail="Invalid token")
     username = session["name"]
     clear_all_user_data(username)
+    return {"success": True}
+
+@app.post("/my-hidden/save")
+async def save_hidden_employee(data: dict, authorization: Optional[str] = Header(None)):
+    """Ердийн ажилтныг ээлжийн жагсаалтаас далдлах."""
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    username = session["name"]
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    add_hidden_employee(username, employee_id)
+    return {"success": True}
+
+@app.delete("/my-hidden/remove")
+async def unhide_employee(data: dict, authorization: Optional[str] = Header(None)):
+    """Далдалсан ажилтныг буцаан харагдуулах."""
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    username = session["name"]
+    employee_id = data.get("employee_id")
+    if not employee_id:
+        raise HTTPException(status_code=400, detail="employee_id required")
+    remove_hidden_employee(username, employee_id)
     return {"success": True}
 
 

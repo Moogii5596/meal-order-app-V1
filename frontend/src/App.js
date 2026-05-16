@@ -58,6 +58,7 @@ function KitchenView({ token, userDept, userLocation }) {
   const [extraEmployees, setExtraEmployees] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [hiddenIds, setHiddenIds] = useState([]);
   const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
@@ -116,6 +117,7 @@ function KitchenView({ token, userDept, userLocation }) {
         .then(r => r.json())
         .then(data => {
           setFavorites(data.favorites || []);
+          setHiddenIds(data.hidden || []);
           const extras = data.extra_employees || [];
           setExtraEmployees(extras.map(e => ({
             id: e.id,
@@ -132,9 +134,21 @@ function KitchenView({ token, userDept, userLocation }) {
         .catch(() => {
           setFavorites([]);
           setExtraEmployees([]);
+          setHiddenIds([]);
         });
     }
   }, [token]);
+
+  // Extras-ийг автоматаар сонгох (refresh болон date/meal солих үед сонголтоо хадгална)
+  useEffect(() => {
+    if (extraEmployees.length === 0) return;
+    setSelectedEmployees(prev => {
+      const newIds = extraEmployees.filter(e => !e.is_swiped).map(e => e.id);
+      const toAdd = newIds.filter(id => !prev.includes(id));
+      if (toAdd.length === 0) return prev;
+      return [...prev, ...toAdd];
+    });
+  }, [extraEmployees, employees]);
 
   const isFavoriteEligible = (emp) => {
     if (!emp?.is_extra) return false;
@@ -172,6 +186,19 @@ function KitchenView({ token, userDept, userLocation }) {
     }).then(() => setExtraEmployees(prev => prev.filter(e => e.id !== empId)));
   };
 
+  // Ердийн ажилтныг ээлжийн жагсаалтаас далдлах
+  const hideEmployee = (empId) => {
+    if (!token) return;
+    fetch(`${API}/my-hidden/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ employee_id: empId })
+    }).then(() => {
+      setHiddenIds(prev => prev.includes(empId) ? prev : [...prev, empId]);
+      setSelectedEmployees(prev => prev.filter(id => id !== empId));
+    });
+  };
+
   // Ээлж шинэчлэх: бүх fav/extra-г устгаад зөвхөн хэлтсийн ажилчдыг харуулна
   const refreshShift = () => {
     if (!token) return;
@@ -184,6 +211,7 @@ function KitchenView({ token, userDept, userLocation }) {
       .then(() => {
         setFavorites([]);
         setExtraEmployees([]);
+        setHiddenIds([]);
         setSelectedEmployees([]);
         loadEmployees(false);
         showToast('Ээлж шинэчлэгдлээ — зөвхөн өөрийн хэлтсийн ажилчид харагдана');
@@ -238,11 +266,12 @@ function KitchenView({ token, userDept, userLocation }) {
   // Байгаа location-уудыг динамикаар гаргах
   const locations = [...new Set(employees.map(e => e.location).filter(Boolean))];
 
-  // Location шүүлтүүр + сунасан ажилтнуудыг нэмнэ
+  // Location шүүлтүүр + сунасан ажилтнуудыг нэмнэ + далдалсныг хасна
   const baseFiltered = selectedLocation
     ? employees.filter(e => e.location === selectedLocation)
     : employees;
-  const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))];
+  const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))]
+    .filter(e => !hiddenIds.includes(e.id));
   const sortedFilteredEmployees = [...filteredEmployees].sort((a, b) => {
     const aFav = favorites.includes(a.id);
     const bFav = favorites.includes(b.id);
@@ -325,8 +354,8 @@ function KitchenView({ token, userDept, userLocation }) {
                   fetch(`${API}/my-extra-employees/save`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ 
-                      employee_id: emp.id, 
+                    body: JSON.stringify({
+                      employee_id: emp.id,
                       extra_type: tab,
                       name: emp.name,
                       last_name: emp.last_name,
@@ -357,7 +386,7 @@ function KitchenView({ token, userDept, userLocation }) {
                     }}
                   />
                 </th>
-                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th><th>Fav</th>
+                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th><th>Тохиргоо</th>
               </tr>
             </thead>
             <tbody>
@@ -394,7 +423,9 @@ function KitchenView({ token, userDept, userLocation }) {
                         Хадгалах
                       </button>
                     ) : (
-                      <span style={{color:'#999'}}>—</span>
+                      <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => hideEmployee(emp.id)} title="Ээлжийн жагсаалтаас хасах">
+                        Хасах
+                      </button>
                     )}
                   </td>
                 </tr>
