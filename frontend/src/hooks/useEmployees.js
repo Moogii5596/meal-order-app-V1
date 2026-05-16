@@ -52,6 +52,8 @@ export function useEmployees({
         .then(data => {
           let employees =
             data.employees || [];
+            console.log('EMPLOYEES:', employees);
+            console.log('USER LOCATION:', userLocation);
 
           if (userLocation) {
             employees = employees.filter(
