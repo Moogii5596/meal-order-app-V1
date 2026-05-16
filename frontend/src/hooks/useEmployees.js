@@ -52,6 +52,7 @@ export function useEmployees({
         .then(data => {
           let employees =
             data.employees || [];
+            console.log('RAW DATA:', data);
             console.log('EMPLOYEES:', employees);
             console.log('USER LOCATION:', userLocation);
 
