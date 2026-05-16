@@ -1,20 +1,15 @@
-  import React, {
-    useState,
-    useEffect,
-  } from 'react';
+  import React, { useState, useEffect, } from 'react';
   import Toast from '../ui/Toast';
   import { fetchDepartments } from '../../services/employees';
   import { useToast } from '../../hooks/useToast';
-  import {
-    MEAL_LABELS,
-    LOCATION_LABELS,
-  } from '../../shared/constants';
+  import {  MEAL_LABELS, LOCATION_LABELS, } from '../../shared/constants';
   import { apiFetch } from '../../services/api';
   import AddEmployeeModal from './AddEmployeeModal';
   import EmployeeTable from './EmployeeTable';
   import { useEmployees } from '../../hooks/useEmployees';
+  import { useAuth } from '../../context/AuthContext';
   // ── Захиалга үүсгэх ──
-  function KitchenView({ token, userDept, userLocation }) {
+  function KitchenView() { const { token, userDept, userLocation } = useAuth();
     const [departments, setDepartments] = useState([]);
     const [selectedDept, setSelectedDept] = useState('');
     const [selectedDeptName, setSelectedDeptName] = useState('');
