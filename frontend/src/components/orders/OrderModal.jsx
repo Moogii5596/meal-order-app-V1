@@ -1,18 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import {
-  API,
   MEAL_LABELS,
 } from '../../shared/constants';
+import { fetchOrderDetail } from '../../services/orders';
 
-function OrderModal({ orderId, onClose, onApprove, onConfirm, role }) {
+function OrderModal({ orderId, onClose, onApprove, onConfirm, role, token }) {
   const [detail, setDetail] = useState(null);
+  const detailAbortController = useRef(null);
 
   useEffect(() => {
-    fetch(`${API}/orders/${orderId}`)
-      .then(r => r.json())
-      .then(setDetail);
-  }, [orderId]);
+    if (!orderId || !token) {
+      setDetail(null);
+      return;
+    }
+
+    if (detailAbortController.current) {
+      detailAbortController.current.abort();
+    }
+
+    const controller = new AbortController();
+    detailAbortController.current = controller;
+
+    fetchOrderDetail(orderId, token, controller.signal)
+      .then(setDetail)
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        setDetail(null);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [orderId, token]);
 
   if (!detail) return (
     <div className="modal-overlay">

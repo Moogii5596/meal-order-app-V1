@@ -1,7 +1,8 @@
 import {
   useState,
   useEffect,
-  useCallback
+  useCallback,
+  useRef
 } from 'react';
 
 import {
@@ -22,6 +23,7 @@ export function useEmployees({
   const [hiddenIds, setHiddenIds] = useState([]);
   const [extraEmployees, setExtraEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
+  const loadAbortController = useRef(null);
 
   // ─────────────────────────────
   // LOAD EMPLOYEES
@@ -33,19 +35,25 @@ export function useEmployees({
 
       setLoading(true);
 
+      if (loadAbortController.current) {
+        loadAbortController.current.abort();
+      }
+
+      const controller = new AbortController();
+      loadAbortController.current = controller;
+
       fetchEmployees(
         selectedDept,
         selectedDate,
         selectedMeal,
-        token
+        token,
+        controller.signal
       )
         .then(data => {
-
           let employees =
             data.employees || [];
 
           if (userLocation) {
-
             employees = employees.filter(
               e =>
                 e.location
@@ -55,16 +63,18 @@ export function useEmployees({
                   .trim()
                   .toLowerCase()
             );
-
           }
 
           setEmployees(employees);
-
+        })
+        .catch(error => {
+          if (error.name === 'AbortError') return;
         })
         .finally(() => {
-          setLoading(false);
+          if (loadAbortController.current === controller) {
+            setLoading(false);
+          }
         });
-
     },
     [
       selectedDept,
@@ -80,16 +90,21 @@ export function useEmployees({
   // ─────────────────────────────
   useEffect(() => {
     loadEmployees();
+
+    return () => {
+      loadAbortController.current?.abort();
+    };
   }, [loadEmployees]);
 
   // ─────────────────────────────
   // MY EMPLOYEES
   // ─────────────────────────────
   useEffect(() => {
-
     if (!token) return;
 
-    fetchMyEmployees(token)
+    const controller = new AbortController();
+
+    fetchMyEmployees(token, controller.signal)
       .then(data => {
 
         setFavorites(
@@ -118,7 +133,8 @@ export function useEmployees({
         );
 
       })
-      .catch(() => {
+      .catch(error => {
+        if (error.name === 'AbortError') return;
 
         setFavorites([]);
         setExtraEmployees([]);
@@ -126,6 +142,9 @@ export function useEmployees({
 
       });
 
+    return () => {
+      controller.abort();
+    };
   }, [token]);
 
   return {

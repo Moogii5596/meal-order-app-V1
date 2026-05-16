@@ -6,7 +6,8 @@ import { apiFetch } from './api';
 export function fetchOrders({
   date,
   mealType,
-  token
+  token,
+  signal
 }) {
 
   return apiFetch(
@@ -14,10 +15,26 @@ export function fetchOrders({
     {
       headers: {
         Authorization: `Bearer ${token}`
-      }
+      },
+      signal
     }
   );
 
+}
+
+// ─────────────────────────────
+// ORDER DETAIL
+// ─────────────────────────────
+export function fetchOrderDetail(orderId, token, signal) {
+  return apiFetch(
+    `/orders/${orderId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      signal
+    }
+  );
 }
 
 // ─────────────────────────────

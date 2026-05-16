@@ -7,6 +7,7 @@ import { fetchOrders, approveOrder, confirmOrder } from '../../services/orders';
 function OrdersView({ role, token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoadingOrderId, setActionLoadingOrderId] = useState(null);
   const [activeTab, setActiveTab] = useState('draft');
   const [filterDate, setFilterDate] = useState('');
   const [filterMeal, setFilterMeal] = useState('');
@@ -42,6 +43,8 @@ function OrdersView({ role, token }) {
   // APPROVE
   // ─────────────────────────────
   const approve = (id) => {
+    setActionLoadingOrderId(id);
+
     approveOrder(id, token)
       .then(() => {
         showToast(
@@ -54,12 +57,17 @@ function OrdersView({ role, token }) {
           'Алдаа гарлаа',
           'error'
         );
+      })
+      .finally(() => {
+        setActionLoadingOrderId(null);
       });
   };
   // ─────────────────────────────
   // CONFIRM
   // ─────────────────────────────
   const confirm = (id) => {
+    setActionLoadingOrderId(id);
+
     confirmOrder(id, token)
       .then(() => {
         showToast(
@@ -72,6 +80,9 @@ function OrdersView({ role, token }) {
           'Алдаа гарлаа',
           'error'
         );
+      })
+      .finally(() => {
+        setActionLoadingOrderId(null);
       });
   };
   // ─────────────────────────────
@@ -113,6 +124,7 @@ function OrdersView({ role, token }) {
       {selectedOrder && (
         <OrderModal
           orderId={selectedOrder}
+          token={token}
           role={role}
           onClose={() =>
             setSelectedOrder(null)
@@ -252,12 +264,15 @@ function OrdersView({ role, token }) {
                   <td>
                     <button
                       className="approve-btn"
+                      disabled={actionLoadingOrderId === o.id}
                       onClick={e => {
                         e.stopPropagation();
                         approve(o.id);
                       }}
                     >
-                      Батлах
+                      {actionLoadingOrderId === o.id
+                        ? 'Батлах...'
+                        : 'Батлах'}
                     </button>
                   </td>
                 )}
@@ -266,12 +281,15 @@ function OrdersView({ role, token }) {
                   <td>
                     <button
                       className="confirm-btn"
+                      disabled={actionLoadingOrderId === o.id}
                       onClick={e => {
                         e.stopPropagation();
                         confirm(o.id);
                       }}
                     >
-                      Баталгаажуулах
+                      {actionLoadingOrderId === o.id
+                        ? 'Баталгаажуулж...'
+                        : 'Баталгаажуулах'}
                     </button>
                   </td>
                 )}

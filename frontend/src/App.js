@@ -8,6 +8,7 @@ import OrdersView from './components/orders/OrdersView';
 import {
   login,
   getMe,
+  refreshToken,
   saveAuth,
   clearAuth
 } from './services/auth';
@@ -34,37 +35,80 @@ function App() {
   // ─────────────────────────────
   useEffect(() => {
     const storedToken = localStorage.getItem('authToken');
+    const storedRefreshToken = localStorage.getItem('authRefreshToken');
+
+    const setUserFromData = (data, token) => {
+      if (!data || !data.role) {
+        clearAuth();
+        return false;
+      }
+
+      setToken(token);
+      setRole(data.role);
+
+      if (data.dept_id) {
+        setUserDept({
+          id: String(data.dept_id),
+          name: data.dept_name
+        });
+      }
+
+      if (data.location) {
+        setUserLocation(data.location);
+      }
+
+      return true;
+    };
+
+    const attemptRefresh = async () => {
+      if (!storedRefreshToken) {
+        clearAuth();
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      try {
+        const refreshData = await refreshToken(storedRefreshToken);
+        saveAuth(refreshData);
+        const meData = await getMe(refreshData.token);
+
+        if (!setUserFromData(meData, refreshData.token)) {
+          clearAuth();
+        }
+      } catch (error) {
+        clearAuth();
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    };
 
     if (!storedToken) {
-      setIsLoadingAuth(false);
+      if (storedRefreshToken) {
+        attemptRefresh();
+      } else {
+        setIsLoadingAuth(false);
+      }
       return;
     }
 
     getMe(storedToken)
       .then(data => {
-        if (data.role) {
-          setToken(storedToken);
-          setRole(data.role);
-
-          if (data.dept_id) {
-            setUserDept({
-              id: String(data.dept_id),
-              name: data.dept_name
-            });
-          }
-
-          if (data.location) {
-            setUserLocation(data.location);
-          }
-        } else {
-          clearAuth();
+        if (!setUserFromData(data, storedToken)) {
+          return attemptRefresh();
         }
       })
-      .catch(() => {
+      .catch(error => {
+        if (error.status === 401 && storedRefreshToken) {
+          return attemptRefresh();
+        }
+
         clearAuth();
+        setIsLoadingAuth(false);
       })
       .finally(() => {
-        setIsLoadingAuth(false);
+        if (!storedRefreshToken) {
+          setIsLoadingAuth(false);
+        }
       });
 
   }, []);

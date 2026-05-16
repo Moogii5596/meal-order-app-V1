@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-import { API } from '../../shared/constants';
+import { fetchRentalEmployees, searchEmployees } from '../../services/employees';
 
 function AddEmployeeModal({
   onAdd,
@@ -12,64 +12,79 @@ function AddEmployeeModal({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const currentFetchController = useRef(null);
 
   useEffect(() => {
+    if (currentFetchController.current) {
+      currentFetchController.current.abort();
+    }
 
     if (tab === 'rental') {
-
       setSearching(true);
+      const controller = new AbortController();
+      currentFetchController.current = controller;
 
-      fetch(`${API}/employees/rental`)
-        .then(r => r.json())
+      fetchRentalEmployees('', controller.signal)
         .then(data => {
           setResults(data);
           setSearching(false);
         })
-        .catch(() => {
+        .catch(error => {
+          if (error.name === 'AbortError') return;
+          setResults([]);
           setSearching(false);
         });
-
     } else {
-
       setResults([]);
       setQuery('');
-
     }
 
+    return () => {
+      currentFetchController.current?.abort();
+    };
   }, [tab]);
 
   const search = () => {
 
     if (tab === 'sunasan') {
-
       if (!query.trim()) return;
-
       setSearching(true);
+      if (currentFetchController.current) {
+        currentFetchController.current.abort();
+      }
 
-      fetch(`${API}/employees/search?q=${encodeURIComponent(query)}`)
-        .then(r => r.json())
+      const controller = new AbortController();
+      currentFetchController.current = controller;
+
+      searchEmployees(query, controller.signal)
         .then(data => {
           setResults(data);
           setSearching(false);
         })
-        .catch(() => {
+        .catch(error => {
+          if (error.name === 'AbortError') return;
+          setResults([]);
           setSearching(false);
         });
-
     } else {
-
       setSearching(true);
+      if (currentFetchController.current) {
+        currentFetchController.current.abort();
+      }
 
-      fetch(`${API}/employees/rental?q=${encodeURIComponent(query)}`)
-        .then(r => r.json())
+      const controller = new AbortController();
+      currentFetchController.current = controller;
+
+      fetchRentalEmployees(query, controller.signal)
         .then(data => {
           setResults(data);
           setSearching(false);
         })
-        .catch(() => {
+        .catch(error => {
+          if (error.name === 'AbortError') return;
+          setResults([]);
           setSearching(false);
         });
-
     }
 
   };
@@ -142,8 +157,9 @@ function AddEmployeeModal({
           <button
             className="approve-btn"
             onClick={search}
+            disabled={searching}
           >
-            Хайх
+            {searching ? 'Хайж байна...' : 'Хайх'}
           </button>
 
         </div>
