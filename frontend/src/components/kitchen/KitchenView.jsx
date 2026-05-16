@@ -1,6 +1,5 @@
   import React, { useState, useEffect, } from 'react';
   import Toast from '../ui/Toast';
-  import { fetchDepartments } from '../../services/employees';
   import { useToast } from '../../hooks/useToast';
   import {  MEAL_LABELS, LOCATION_LABELS, } from '../../shared/constants';
   import { apiFetch } from '../../services/api';
@@ -8,6 +7,7 @@
   import EmployeeTable from './EmployeeTable';
   import { useEmployees } from '../../hooks/useEmployees';
   import { useAuth } from '../../context/AuthContext';
+  import { fetchDepartments, saveFavoriteEmployee } from '../../services/employees';
   // ── Захиалга үүсгэх ──
   function KitchenView() { const { token, userDept, userLocation } = useAuth();
     const [departments, setDepartments] = useState([]);
@@ -65,16 +65,15 @@
       setEmployees([]);
     };
 
-    useEffect(() => {
-  if (
-    favorites.length === 0 &&
-    employees.length > 0
-  ) {
-    setFavorites(
-      employees.map(e => e.id)
-    );
-  }
-}, [employees, favorites, setFavorites]);
+    useEffect(() => { 
+      if ( favorites.length === 0 && employees.length > 0 ) 
+        { 
+          const employeeIds = employees.map(e => e.id); 
+          setFavorites(employeeIds); 
+          employeeIds.forEach(id => { 
+            saveFavoriteEmployee(id) 
+            .catch(console.error); }); } }, [ 
+              employees, favorites, setFavorites ]);
 
     useEffect(() => {
       if (extraEmployees.length === 0) return;

@@ -38,3 +38,19 @@ export function fetchRentalEmployees(
 
   return apiFetch(endpoint, { signal });
 }
+
+export function saveFavoriteEmployee(
+  employeeId
+) {
+
+  return apiFetch(
+    '/my-employees/save',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        employee_id: employeeId
+      })
+    }
+  );
+
+}
