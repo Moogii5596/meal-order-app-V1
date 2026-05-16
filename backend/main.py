@@ -68,7 +68,7 @@ def get_favorite_employees(username):
 
 def add_extra_employee(username, employee_id, extra_type, name='', last_name='', dept_name='', job_title='', location=''):
     conn = sqlite3.connect('favorites.db')
-    conn.execute('INSERT OR IGNORE INTO extra_employees (username, employee_id, extra_type, name, last_name, dept_name, job_title, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+    conn.execute('INSERT OR IGNORE INTO extra_employees (username, employee_id, extra_type, name, last_name, dept_name, job_title, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                  (username, employee_id, extra_type, name, last_name, dept_name, job_title, location))
     conn.commit()
     conn.close()
@@ -76,6 +76,14 @@ def add_extra_employee(username, employee_id, extra_type, name='', last_name='',
 def remove_extra_employee(username, employee_id):
     conn = sqlite3.connect('favorites.db')
     conn.execute('DELETE FROM extra_employees WHERE username = ? AND employee_id = ?', (username, employee_id))
+    conn.commit()
+    conn.close()
+
+def clear_all_user_data(username):
+    """Хэрэглэгчийн бүх favorites болон extra ажилчдыг устгана."""
+    conn = sqlite3.connect('favorites.db')
+    conn.execute('DELETE FROM favorite_employees WHERE username = ?', (username,))
+    conn.execute('DELETE FROM extra_employees WHERE username = ?', (username,))
     conn.commit()
     conn.close()
 
@@ -247,6 +255,17 @@ async def remove_extra_employee(data: dict, authorization: Optional[str] = Heade
     if not employee_id:
         raise HTTPException(status_code=400, detail="employee_id required")
     remove_extra_employee(username, employee_id)
+    return {"success": True}
+
+@app.delete("/my-employees/clear-all")
+async def clear_my_employees(authorization: Optional[str] = Header(None)):
+    """Ээлж шинэчлэх: хэрэглэгчийн бүх favorites болон extra ажилчдыг устгана."""
+    token = authorization.replace("Bearer ", "") if authorization else None
+    session = get_session(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    username = session["name"]
+    clear_all_user_data(username)
     return {"success": True}
 
 
