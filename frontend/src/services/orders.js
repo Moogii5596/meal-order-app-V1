@@ -6,18 +6,12 @@ import { apiFetch } from './api';
 export function fetchOrders({
   date,
   mealType,
-  token,
   signal
 }) {
 
   return apiFetch(
     `/orders?date=${date}&meal_type=${mealType}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      signal
-    }
+    { signal }
   );
 
 }
@@ -25,33 +19,27 @@ export function fetchOrders({
 // ─────────────────────────────
 // ORDER DETAIL
 // ─────────────────────────────
-export function fetchOrderDetail(orderId, token, signal) {
+export function fetchOrderDetail(
+  orderId,
+  signal
+) {
+
   return apiFetch(
     `/orders/${orderId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      signal
-    }
+    { signal }
   );
+
 }
 
 // ─────────────────────────────
 // APPROVE ORDER
 // ─────────────────────────────
-export function approveOrder(
-  orderId,
-  token
-) {
+export function approveOrder(orderId) {
 
   return apiFetch(
     `/orders/${orderId}/approve`,
     {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: 'POST'
     }
   );
 
@@ -60,18 +48,12 @@ export function approveOrder(
 // ─────────────────────────────
 // REJECT ORDER
 // ─────────────────────────────
-export function rejectOrder(
-  orderId,
-  token
-) {
+export function rejectOrder(orderId) {
 
   return apiFetch(
     `/orders/${orderId}/reject`,
     {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: 'POST'
     }
   );
 
@@ -80,34 +62,26 @@ export function rejectOrder(
 // ─────────────────────────────
 // DELETE ORDER
 // ─────────────────────────────
-export function deleteOrder(
-  orderId,
-  token
-) {
+export function deleteOrder(orderId) {
 
   return apiFetch(
     `/orders/${orderId}`,
     {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: 'DELETE'
     }
   );
 
 }
-export function confirmOrder(
-  orderId,
-  token
-) {
+
+// ─────────────────────────────
+// CONFIRM ORDER
+// ─────────────────────────────
+export function confirmOrder(orderId) {
 
   return apiFetch(
     `/orders/${orderId}/confirm`,
     {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      method: 'POST'
     }
   );
 

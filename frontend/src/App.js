@@ -1,47 +1,50 @@
 import React, { useState } from 'react';
 import './App.css';
-import CampManagerView from './components/camp/CampManagerView';
-import KitchenView from './components/kitchen/KitchenView';
-import OrdersView from './components/orders/OrdersView';
-import { useAuth } from './context/AuthContext';
+import { useAuth }
+  from './context/AuthContext';
+import AppRoutes
+  from './routes/AppRoutes';
+const ROLE_LABELS = {
+  kitchen_staff: 'Хоолны захиалагч',
+  category_manager: 'Хоолны захиалга хянагч ТН',
+  camp_manager: 'Кемп менежер',
+};
 
+function App() {
 
-const ROLE_LABELS = { kitchen_staff: 'Хоолны захиалагч', category_manager: 'Хоолны захиалга хянагч ТН', camp_manager: 'Кемп менежер',}; 
-function App() { 
-  const { token, role, userDept, userLocation, isLoadingAuth, login, logout } = useAuth(); 
-  const [loginName, setLoginName] = useState(''); 
-  const [loginPass, setLoginPass] = useState('');
-  // ─────────────────────────────
+  const {
+    role,
+    login,
+    logout
+  } = useAuth();
+
+  const [loginName, setLoginName] =
+    useState('');
+
+  const [loginPass, setLoginPass] =
+    useState('');
+
   // LOGIN
-  // ─────────────────────────────
-  const handleLogin = async () => { 
-    try { 
-      await login(loginName, loginPass); 
-    } catch (err) { alert(err.message); 
-    } };
-  // ─────────────────────────────
-  // LOGOUT
-  // ─────────────────────────────
-const handleLogout = () => { logout(); };
+  const handleLogin = async () => {
 
-  // ─────────────────────────────
-  // LOADING
-  // ─────────────────────────────
-  if (isLoadingAuth) {
-    return (
-      <div className="login-box">
-        <h1>Camp Meal Login</h1>
-        <div className="empty-state">
-          Шалгаж байна...
-        </div>
-      </div>
-    );
-  }
+    try {
 
-  // ─────────────────────────────
+      await login(
+        loginName,
+        loginPass
+      );
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
+  };
+
   // LOGIN SCREEN
-  // ─────────────────────────────
   if (!role) {
+
     return (
       <div className="login-box">
 
@@ -51,16 +54,26 @@ const handleLogout = () => { logout(); };
           type="text"
           placeholder="Нэвтрэх нэр"
           value={loginName}
-          onChange={e => setLoginName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          onChange={e =>
+            setLoginName(e.target.value)
+          }
+          onKeyDown={e =>
+            e.key === 'Enter' &&
+            handleLogin()
+          }
         />
 
         <input
           type="password"
           placeholder="Нууц үг"
           value={loginPass}
-          onChange={e => setLoginPass(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+          onChange={e =>
+            setLoginPass(e.target.value)
+          }
+          onKeyDown={e =>
+            e.key === 'Enter' &&
+            handleLogin()
+          }
         />
 
         <button
@@ -72,11 +85,9 @@ const handleLogout = () => { logout(); };
 
       </div>
     );
+
   }
 
-  // ─────────────────────────────
-  // MAIN APP
-  // ─────────────────────────────
   return (
     <div className="App">
 
@@ -85,44 +96,31 @@ const handleLogout = () => { logout(); };
         <div className="header-row">
 
           <div>
-            <h1>Хоолны захиалга</h1>
+
+            <h1>
+              Хоолны захиалга
+            </h1>
 
             <span className="role-badge">
               {ROLE_LABELS[role]}
             </span>
+
           </div>
 
           <button
             className="logout-btn"
-            onClick={handleLogout}
+            onClick={logout}
           >
             Гарах
           </button>
 
         </div>
+
       </div>
 
-      {role === 'camp_manager' ? (
-        <CampManagerView token={token} />
-      ) : (
-        <>
-          <KitchenView
-            token={token}
-            userDept={userDept}
-            userLocation={userLocation}
-          />
-
-          {role !== 'kitchen_staff' && (
-            <OrdersView
-  role={role}
-  token={token}
-/>
-          )}
-        </>
-      )}
+      <AppRoutes />
 
     </div>
   );
 }
-
 export default App;
