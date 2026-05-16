@@ -1,490 +1,339 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-} from 'react';
+  import React, {
+    useState,
+    useEffect,
+  } from 'react';
+  import Toast from '../ui/Toast';
+  import { fetchDepartments } from '../../services/employees';
+  import { useToast } from '../../hooks/useToast';
+  import {
+    MEAL_LABELS,
+    LOCATION_LABELS,
+  } from '../../shared/constants';
+  import { apiFetch } from '../../services/api';
+  import AddEmployeeModal from './AddEmployeeModal';
+  import EmployeeTable from './EmployeeTable';
+  import { useEmployees } from '../../hooks/useEmployees';
+  // ── Захиалга үүсгэх ──
+  function KitchenView({ token, userDept, userLocation }) {
+    const [departments, setDepartments] = useState([]);
+    const [selectedDept, setSelectedDept] = useState('');
+    const [selectedDeptName, setSelectedDeptName] = useState('');
+    const [selectedEmployees, setSelectedEmployees] = useState([]);
+    const [selectedMeal, setSelectedMeal] = useState('lunch');
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedLocation, setSelectedLocation] = useState('');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const { toast, showToast, hideToast } = useToast();
+    const {
+    employees,
+    setEmployees,
 
-import Toast from '../ui/Toast';
+    favorites,
+    setFavorites,
 
-import { useToast } from '../../hooks/useToast';
+    hiddenIds,
+    setHiddenIds,
 
-import {
-  API,
-  MEAL_LABELS,
-  LOCATION_LABELS,
-} from '../../shared/constants';
-// ── Захиалга үүсгэх ──
-function KitchenView({ token, userDept, userLocation }) {
-  const [departments, setDepartments] = useState([]);
-  const [selectedDept, setSelectedDept] = useState('');
-  const [selectedDeptName, setSelectedDeptName] = useState('');
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [selectedMeal, setSelectedMeal] = useState('lunch');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [loading, setLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const [extraEmployees, setExtraEmployees] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [favorites, setFavorites] = useState([]);
-  const [hiddenIds, setHiddenIds] = useState([]);
-  const { toast, showToast, hideToast } = useToast();
+    extraEmployees,
+    setExtraEmployees,
 
-  useEffect(() => {
-    if (userDept) {
-      setDepartments([{ id: userDept.id, name: userDept.name }]);
-      setSelectedDept(userDept.id);
-      setSelectedDeptName(userDept.name);
-    } else {
-      fetch(`${API}/departments`)
-        .then(r => r.json())
-        .then(data => setDepartments(data))
-        .catch(console.error);
-    }
-    if (userLocation) {
-      setSelectedLocation(userLocation);
-    }
-  }, [userDept, userLocation]);
+    loading,
 
-  const handleDeptChange = (e) => {
-    setSelectedDept(e.target.value);
-    const dept = departments.find(d => String(d.id) === e.target.value);
-    setSelectedDeptName(dept ? dept.name : '');
-    setEmployees([]);
-  };
+    loadEmployees
 
-  const loadEmployees = useCallback((autoSelect = true) => {
-    if (!selectedDept) return;
-    setLoading(true);
-    fetch(`${API}/employees?dept_id=${selectedDept}&date=${selectedDate}&meal_type=${selectedMeal}`)
-      .then(r => r.json())
-      .then(data => {
-        let employees = data.employees || [];
-        if (userLocation) {
-          employees = employees.filter(e => e.location?.trim().toLowerCase() === userLocation.trim().toLowerCase());
-        }
-        setEmployees(employees);
-        if (autoSelect) {
-          setSelectedEmployees(employees.filter(e => !e.is_swiped).map(e => e.id));
-        } else {
-          setSelectedEmployees([]);
-        }
-        setLoading(false);
+  } = useEmployees({
+    selectedDept,
+    selectedDate,
+    selectedMeal,
+    token,
+    userLocation
+  });
+
+    useEffect(() => {
+      if (userDept) {
+        setDepartments([{ id: userDept.id, name: userDept.name }]);
+        setSelectedDept(userDept.id);
+        setSelectedDeptName(userDept.name);
+      } else {
+  fetchDepartments()
+    .then(data => setDepartments(data))
+      }
+      if (userLocation) {
+        setSelectedLocation(userLocation);
+      }
+    }, [userDept, userLocation]);
+
+    const handleDeptChange = (e) => {
+      setSelectedDept(e.target.value);
+      const dept = departments.find(d => String(d.id) === e.target.value);
+      setSelectedDeptName(dept ? dept.name : '');
+      setEmployees([]);
+    };
+
+    useEffect(() => {
+      if (extraEmployees.length === 0) return;
+      setSelectedEmployees(prev => {
+        const newIds = extraEmployees.filter(e => !e.is_swiped).map(e => e.id);
+        const toAdd = newIds.filter(id => !prev.includes(id));
+        if (toAdd.length === 0) return prev;
+        return [...prev, ...toAdd];
       });
-  }, [selectedDept, selectedDate, selectedMeal, userLocation]);
+    }, [extraEmployees, employees]);
 
-  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+    const isFavoriteEligible = (emp) => {
+      if (!emp?.is_extra) return false;
+      if (emp.extra_type === 'rental') return true;
+      if (emp.extra_type === 'sunasan' && emp.dept_name && selectedDeptName && emp.dept_name !== selectedDeptName) return true;
+      return false;
+    };
 
-  useEffect(() => {
-    if (token) {
-      fetch(`${API}/my-employees`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(r => r.json())
-        .then(data => {
-          setFavorites(data.favorites || []);
-          setHiddenIds(data.hidden || []);
-          const extras = data.extra_employees || [];
-          setExtraEmployees(extras.map(e => ({
-            id: e.id,
-            extra_type: e.extra_type,
-            name: e.name || '',
-            last_name: e.last_name || '',
-            dept_name: e.dept_name || '',
-            job_title: e.job_title || '',
-            location: e.location || '',
-            is_extra: true,
-            is_swiped: false
-          })));
-        })
-        .catch(() => {
-          setFavorites([]);
-          setExtraEmployees([]);
-          setHiddenIds([]);
-        });
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (extraEmployees.length === 0) return;
-    setSelectedEmployees(prev => {
-      const newIds = extraEmployees.filter(e => !e.is_swiped).map(e => e.id);
-      const toAdd = newIds.filter(id => !prev.includes(id));
-      if (toAdd.length === 0) return prev;
-      return [...prev, ...toAdd];
-    });
-  }, [extraEmployees, employees]);
-
-  const isFavoriteEligible = (emp) => {
-    if (!emp?.is_extra) return false;
-    if (emp.extra_type === 'rental') return true;
-    if (emp.extra_type === 'sunasan' && emp.dept_name && selectedDeptName && emp.dept_name !== selectedDeptName) return true;
-    return false;
-  };
-
-  const saveFavorite = (empId) => {
-    if (!token) return;
-    const emp = [...employees, ...extraEmployees].find(e => e.id === empId);
-    if (!isFavoriteEligible(emp)) return;
-    fetch(`${API}/my-employees/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ employee_id: empId })
-    }).then(() => setFavorites(prev => prev.includes(empId) ? prev : [...prev, empId]));
-  };
-
-  const removeFavorite = (empId) => {
-    if (!token) return;
-    fetch(`${API}/my-employees/remove`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ employee_id: empId })
-    }).then(() => setFavorites(prev => prev.filter(id => id !== empId)));
-  };
-
-  const removeExtraEmployee = (empId) => {
-    if (!token) return;
-    fetch(`${API}/my-extra-employees/remove`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ employee_id: empId })
-    }).then(() => setExtraEmployees(prev => prev.filter(e => e.id !== empId)));
-  };
-
-  const hideEmployee = (empId) => {
-    if (!token) return;
-    fetch(`${API}/my-hidden/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ employee_id: empId })
-    }).then(() => {
-      setHiddenIds(prev => prev.includes(empId) ? prev : [...prev, empId]);
-      setSelectedEmployees(prev => prev.filter(id => id !== empId));
-    });
-  };
-
-  const refreshShift = () => {
-    if (!token) return;
-    if (!window.confirm('Та ээлжээ шинэчлэх үү? Fav жагсаалтын бүх ажилтан устах болно.')) return;
-    fetch(`${API}/my-employees/clear-all`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(() => {
-        setFavorites([]);
-        setExtraEmployees([]);
-        setHiddenIds([]);
-        setSelectedEmployees([]);
-        loadEmployees(false);
-        showToast('Ээлж шинэчлэгдлээ — зөвхөн өөрийн хэлтсийн ажилчид харагдана');
-      })
-      .catch(() => showToast('Ээлж шинэчлэхэд алдаа гарлаа', 'error'));
-  };
-
-  const saveShift = () => {
-    const eligibleIds = selectedEmployees
-      .map(id => [...employees, ...extraEmployees].find(e => e.id === id))
-      .filter(emp => emp && isFavoriteEligible(emp))
-      .map(emp => emp.id);
-
-    if (eligibleIds.length === 0) {
-      showToast('Ээлж хадгалахын тулд зөв ажилтнуудыг сонгоно уу', 'error');
-      return;
-    }
-
-    Promise.all(eligibleIds.map(empId =>
-      fetch(`${API}/my-employees/save`, {
+    const saveFavorite = (empId) => {
+      if (!token) return;
+      const emp = [...employees, ...extraEmployees].find(e => e.id === empId);
+      if (!isFavoriteEligible(emp)) return;
+      apiFetch('/my-employees/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ employee_id: empId })
-      })
-    ))
-      .then(() => {
-        setFavorites(prev => [...new Set([...prev, ...eligibleIds])]);
-        showToast('Ээлж амжилттай хадгалагдлаа');
-      })
-      .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
-  };
+      }).then(() => setFavorites(prev => prev.includes(empId) ? prev : [...prev, empId]));
+    };
 
-  const submitOrder = () => {
-    const idsToSubmit = selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id));
-    fetch(`${API}/create-order?date=${selectedDate}&meal_type=${selectedMeal}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify(idsToSubmit)
+    const removeFavorite = (empId) => {
+
+  if (!token) return;
+
+  apiFetch('/my-employees/remove', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      employee_id: empId
     })
-      .then(r => r.json())
-      .then(() => {
-        showToast(`${MEAL_LABELS[selectedMeal]} захиалга амжилттай илгээгдлээ ✓`);
-        loadEmployees(false);
-      })
-      .catch(() => showToast('Алдаа гарлаа', 'error'));
-  };
+  }).then(() => {
 
-  const locations = [...new Set(employees.map(e => e.location).filter(Boolean))];
+    setFavorites(prev =>
+      prev.filter(id => id !== empId)
+    );
 
-  const baseFiltered = selectedLocation
-    ? employees.filter(e => e.location === selectedLocation)
-    : employees;
-  const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))]
-    .filter(e => !hiddenIds.includes(e.id));
-  const sortedFilteredEmployees = [...filteredEmployees].sort((a, b) => {
-    const aFav = favorites.includes(a.id);
-    const bFav = favorites.includes(b.id);
-    if (aFav && !bFav) return -1;
-    if (!aFav && bFav) return 1;
-    return 0;
   });
 
-  const swipedCount = sortedFilteredEmployees.filter(e => e.is_swiped).length;
-  const notSwipedCount = sortedFilteredEmployees.filter(e => !e.is_swiped).length;
+};
 
-  return (
-    <div>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
-      <div className="controls">
-        <div className="control-row">
-          <label>Огноо:</label>
-          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
-        </div>
-        <div className="control-row">
-          <label>Хэлтэс:</label>
-          <select onChange={handleDeptChange} value={selectedDept}>
-            <option value="">-- Хэлтэс сонгоно уу --</option>
-            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        </div>
-        <div className="meal-types">
-          {Object.entries(MEAL_LABELS).map(([key, label]) => (
-            <button key={key} className={selectedMeal === key ? 'active' : ''} onClick={() => setSelectedMeal(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+    const removeExtraEmployee = (empId) => {
+      if (!token) return;
+      apiFetch('/my-extra-employees/remove', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ employee_id: empId })
+      }).then(() => setExtraEmployees(prev => prev.filter(e => e.id !== empId)));
+    };
 
-      {!selectedDept ? (
-        <div className="empty-state">Эхлээд хэлтэс сонгоно уу</div>
-      ) : loading ? (
-        <div className="empty-state">Уншиж байна...</div>
-      ) : (
-        <div>
-          {locations.length > 1 && (
-            <div className="meal-types" style={{marginBottom: 10}}>
-              <button className={selectedLocation === '' ? 'active' : ''} onClick={() => setSelectedLocation('')}>Бүгд</button>
-              {locations.map(loc => (
-                <button key={loc} className={selectedLocation === loc ? 'active' : ''} onClick={() => setSelectedLocation(loc)}>
-                  {LOCATION_LABELS[loc] || loc}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="table-header">
-            <div className="table-info">
-              <strong>⭐ Миний ээлж (Fav жагсаалт)</strong>
-              <span> — {selectedDeptName}</span>
-              {selectedLocation && <span> — {LOCATION_LABELS[selectedLocation] || selectedLocation}</span>}
-              <span className="stat"> | Нийт: {sortedFilteredEmployees.length} </span>
-              <span className="stat-success">Карттай: {swipedCount}</span>
-              <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
-              {(favorites.length > 0 || extraEmployees.length > 0) && (
-                <span className="stat"> | Fav: {favorites.length} | Нэмэлт: {extraEmployees.length}</span>
-              )}
-            </div>
-            <div>
-              <button type="button" className="action-btn" onClick={() => setSelectedEmployees(sortedFilteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
-              <button type="button" className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
-              <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
-              <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={refreshShift}>↻ Ээлж шинэчлэх</button>
-            </div>
+    const hideEmployee = (empId) => {
+      if (!token) return;
+      apiFetch('/my-hidden/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ employee_id: empId })
+      }).then(() => {
+        setHiddenIds(prev => prev.includes(empId) ? prev : [...prev, empId]);
+        setSelectedEmployees(prev => prev.filter(id => id !== empId));
+      });
+    };
+
+    const refreshShift = () => {
+      if (!token) return;
+      if (!window.confirm('Та ээлжээ шинэчлэх үү? Fav жагсаалтын бүх ажилтан устах болно.')) return;
+      apiFetch('/my-employees/clear-all', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+        .then(() => {
+          setFavorites([]);
+          setExtraEmployees([]);
+          setHiddenIds([]);
+          setSelectedEmployees([]);
+          loadEmployees(false);
+          showToast('Ээлж шинэчлэгдлээ — зөвхөн өөрийн хэлтсийн ажилчид харагдана');
+        })
+        .catch(() => showToast('Ээлж шинэчлэхэд алдаа гарлаа', 'error'));
+    };
+
+    const saveShift = () => {
+      const eligibleIds = selectedEmployees
+        .map(id => [...employees, ...extraEmployees].find(e => e.id === id))
+        .filter(emp => emp && isFavoriteEligible(emp))
+        .map(emp => emp.id);
+
+      if (eligibleIds.length === 0) {
+        showToast('Ээлж хадгалахын тулд зөв ажилтнуудыг сонгоно уу', 'error');
+        return;
+      }
+
+      Promise.all(eligibleIds.map(empId =>
+        apiFetch('/my-employees/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ employee_id: empId })
+        })
+      ))
+        .then(() => {
+          setFavorites(prev => [...new Set([...prev, ...eligibleIds])]);
+          showToast('Ээлж амжилттай хадгалагдлаа');
+        })
+        .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
+    };
+
+    const submitOrder = () => {
+      const idsToSubmit = selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id));
+      apiFetch(
+  `/create-order?date=${selectedDate}&meal_type=${selectedMeal}`,
+  {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(idsToSubmit)
+      })
+        .then(() => {
+          showToast(`${MEAL_LABELS[selectedMeal]} захиалга амжилттай илгээгдлээ ✓`);
+          loadEmployees(false);
+        })
+        .catch(() => showToast('Алдаа гарлаа', 'error'));
+    };
+
+    const locations = [...new Set(employees.map(e => e.location).filter(Boolean))];
+
+    const baseFiltered = selectedLocation
+      ? employees.filter(e => e.location === selectedLocation)
+      : employees;
+    const filteredEmployees = [...baseFiltered, ...extraEmployees.filter(e => !baseFiltered.find(b => b.id === e.id))]
+      .filter(e => !hiddenIds.includes(e.id));
+    const sortedFilteredEmployees = [...filteredEmployees].sort((a, b) => {
+      const aFav = favorites.includes(a.id);
+      const bFav = favorites.includes(b.id);
+      if (aFav && !bFav) return -1;
+      if (!aFav && bFav) return 1;
+      return 0;
+    });
+
+    const swipedCount = sortedFilteredEmployees.filter(e => e.is_swiped).length;
+    const notSwipedCount = sortedFilteredEmployees.filter(e => !e.is_swiped).length;
+
+    return (
+      <div>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+        <div className="controls">
+          <div className="control-row">
+            <label>Огноо:</label>
+            <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
           </div>
+          <div className="control-row">
+            <label>Хэлтэс:</label>
+            <select onChange={handleDeptChange} value={selectedDept}>
+              <option value="">-- Хэлтэс сонгоно уу --</option>
+              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div className="meal-types">
+            {Object.entries(MEAL_LABELS).map(([key, label]) => (
+              <button key={key} className={selectedMeal === key ? 'active' : ''} onClick={() => setSelectedMeal(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {showAddModal && (
-            <AddEmployeeModal
-              favorites={favorites}
-              token={token}
-              onAdd={(emp, tab) => {
-                setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab, is_swiped: false}]);
-                setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
-                if (token) {
-                  fetch(`${API}/my-extra-employees/save`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({
-                      employee_id: emp.id,
-                      extra_type: tab,
-                      name: emp.name,
-                      last_name: emp.last_name,
-                      dept_name: emp.dept_name,
-                      job_title: emp.job_title,
-                      location: emp.location
-                    })
-                  }).catch(console.error);
-                }
-              }}
-              onClose={() => setShowAddModal(false)}
-            />
-          )}
-          <table className="employee-table">
-            <thead>
-              <tr>
-                <th>
-                  <input type="checkbox"
-                    checked={sortedFilteredEmployees.filter(e => !e.is_swiped).length > 0 &&
-                      sortedFilteredEmployees.filter(e => !e.is_swiped).every(e => selectedEmployees.includes(e.id))}
-                    onChange={e => {
-                      const ids = sortedFilteredEmployees.filter(emp => !emp.is_swiped).map(emp => emp.id);
-                      if (e.target.checked) {
-                        setSelectedEmployees(prev => [...new Set([...prev, ...ids])]);
-                      } else {
-                        setSelectedEmployees(prev => prev.filter(id => !ids.includes(id)));
-                      }
-                    }}
-                  />
-                </th>
-                <th>Овог</th><th>Нэр</th><th>Албан тушаал</th><th>Байршил</th><th>Карт</th><th>Тохиргоо</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedFilteredEmployees.map(emp => (
-                <tr key={emp.id} className={emp.is_swiped ? 'swiped-row' : ''}>
-                  <td>
-                    <input type="checkbox" checked={selectedEmployees.includes(emp.id)}
-                      onChange={() => {
-                        setSelectedEmployees(prev =>
-                          prev.includes(emp.id) ? prev.filter(x => x !== emp.id) : [...prev, emp.id]
-                        );
-                      }}
-                      disabled={emp.is_swiped} />
-                  </td>
-                  <td>{emp.last_name}</td>
-                  <td>{favorites.includes(emp.id) && emp.extra_type === 'rental' ? '⭐ ' : ''}{emp.name}</td>
-                  <td>{emp.job_title}</td>
-                  <td>
-                    {LOCATION_LABELS[emp.location] || emp.location || '—'}
-                    {emp.is_extra && <span style={{marginLeft:4, fontSize:11, color:'#1677ff'}}>({emp.extra_type === 'rental' ? 'түрээсийн' : 'сунасан'})</span>}
-                  </td>
-                  <td><span className={`badge ${emp.is_swiped ? 'success' : 'error'}`}>{emp.is_swiped ? 'Шивэгдсэн' : 'Шивэгдээгүй'}</span></td>
-                  <td>
-                    {favorites.includes(emp.id) ? (
-                      <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => removeFavorite(emp.id)}>
-                        Хасах
-                      </button>
-                    ) : emp.is_extra ? (
-                      <button type="button" className="action-btn" style={{borderColor:'#ff9800', color:'#ff9800'}} onClick={() => removeExtraEmployee(emp.id)}>
-                        Нэмэлтээс хасах
-                      </button>
-                    ) : isFavoriteEligible(emp) ? (
-                      <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => saveFavorite(emp.id)}>
-                        Хадгалах
-                      </button>
-                    ) : (
-                      <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={() => hideEmployee(emp.id)}>
-                        Хасах
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length > 0 && (
-            <div style={{display:'flex', gap: '10px', flexWrap: 'wrap'}}>
-              <button type="button" className="submit-btn" onClick={submitOrder}>
-                Захиалга илгээх ({selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length} ажилтан)
-              </button>
-              <button type="button" className="approve-btn" onClick={saveShift}>
-                Ээлж хадгалах
-              </button>
+        {!selectedDept ? (
+          <div className="empty-state">Эхлээд хэлтэс сонгоно уу</div>
+        ) : loading ? (
+          <div className="empty-state">Уншиж байна...</div>
+        ) : (
+          <div>
+            {locations.length > 1 && (
+              <div className="meal-types" style={{marginBottom: 10}}>
+                <button className={selectedLocation === '' ? 'active' : ''} onClick={() => setSelectedLocation('')}>Бүгд</button>
+                {locations.map(loc => (
+                  <button key={loc} className={selectedLocation === loc ? 'active' : ''} onClick={() => setSelectedLocation(loc)}>
+                    {LOCATION_LABELS[loc] || loc}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="table-header">
+              <div className="table-info">
+                <strong>⭐ Миний ээлж (Fav жагсаалт)</strong>
+                <span> — {selectedDeptName}</span>
+                {selectedLocation && <span> — {LOCATION_LABELS[selectedLocation] || selectedLocation}</span>}
+                <span className="stat"> | Нийт: {sortedFilteredEmployees.length} </span>
+                <span className="stat-success">Карттай: {swipedCount}</span>
+                <span className="stat-warn"> | Захиалах: {notSwipedCount}</span>
+                {(favorites.length > 0 || extraEmployees.length > 0) && (
+                  <span className="stat"> | Fav: {favorites.length} | Нэмэлт: {extraEmployees.length}</span>
+                )}
+              </div>
+              <div>
+                <button type="button" className="action-btn" onClick={() => setSelectedEmployees(sortedFilteredEmployees.filter(e => !e.is_swiped).map(e => e.id))}>Бүгд</button>
+                <button type="button" className="action-btn" onClick={() => setSelectedEmployees([])}>Цуцлах</button>
+                <button type="button" className="action-btn" style={{borderColor:'#1677ff', color:'#1677ff'}} onClick={() => setShowAddModal(true)}>+ Нэмэх</button>
+                <button type="button" className="action-btn" style={{borderColor:'#ff4d4f', color:'#ff4d4f'}} onClick={refreshShift}>↻ Ээлж шинэчлэх</button>
+              </div>
             </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
-function AddEmployeeModal({ onAdd, onClose, favorites = [] }) {
-  const [tab, setTab] = useState('sunasan');
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-
-  useEffect(() => {
-    if (tab === 'rental') {
-      setSearching(true);
-      fetch(`${API}/employees/rental`)
-        .then(r => r.json())
-        .then(data => { setResults(data); setSearching(false); })
-        .catch(() => setSearching(false));
-    } else {
-      setResults([]);
-      setQuery('');
-    }
-  }, [tab]);
-
-  const search = () => {
-    if (tab === 'sunasan') {
-      if (!query.trim()) return;
-      setSearching(true);
-      fetch(`${API}/employees/search?q=${encodeURIComponent(query)}`)
-        .then(r => r.json())
-        .then(data => { setResults(data); setSearching(false); })
-        .catch(() => setSearching(false));
-    } else {
-      setSearching(true);
-      fetch(`${API}/employees/rental?q=${encodeURIComponent(query)}`)
-        .then(r => r.json())
-        .then(data => { setResults(data); setSearching(false); })
-        .catch(() => setSearching(false));
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <strong>Ажилтан нэмэх</strong>
-          <button className="action-btn" onClick={onClose}>✕</button>
-        </div>
-        <div className="meal-types" style={{marginBottom:12}}>
-          <button className={tab === 'sunasan' ? 'active' : ''} onClick={() => setTab('sunasan')}>Сунасан</button>
-          <button className={tab === 'rental' ? 'active' : ''} onClick={() => setTab('rental')}>Түрээсийн</button>
-        </div>
-        <div style={{display:'flex', gap:8, marginBottom:12}}>
-          <input
-            style={{flex:1, padding:'8px 12px', border:'1px solid #d9d9d9', borderRadius:6, fontSize:14}}
-            placeholder="Нэрээр хайх..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
-          />
-          <button className="approve-btn" onClick={search}>Хайх</button>
-        </div>
-        {searching && <div className="empty-state">Уншиж байна...</div>}
-        {!searching && results.length === 0 && tab === 'sunasan' && (
-          <div className="empty-state" style={{padding:20}}>Нэр бичиж хайна уу</div>
-        )}
-        {results.length > 0 && (
-          <table className="employee-table">
-            <thead><tr><th>Нэр</th><th>Хэлтэс</th><th></th></tr></thead>
-            <tbody>
-              {results.map(emp => (
-                <tr key={emp.id}>
-                  <td>{favorites.includes(emp.id) && tab === 'rental' ? '⭐ ' : ''}{emp.last_name} {emp.name}</td>
-                  <td style={{fontSize:12, color:'#888'}}>{emp.dept_name}</td>
-                  <td><button className="confirm-btn" onClick={() => { onAdd(emp, tab); onClose(); }}>Нэмэх</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {showAddModal && (
+              <AddEmployeeModal
+                favorites={favorites}
+                token={token}
+                onAdd={(emp, tab) => {
+                  setExtraEmployees(prev => prev.find(e => e.id === emp.id) ? prev : [...prev, {...emp, is_extra: true, extra_type: tab, is_swiped: false}]);
+                  setSelectedEmployees(prev => prev.includes(emp.id) ? prev : [...prev, emp.id]);
+                  if (token) {
+                    apiFetch('/my-extra-employees/save', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify({
+                        employee_id: emp.id,
+                        extra_type: tab,
+                        name: emp.name,
+                        last_name: emp.last_name,
+                        dept_name: emp.dept_name,
+                        job_title: emp.job_title,
+                        location: emp.location
+                      })
+                    }).catch(console.error);
+                  }
+                }}
+                onClose={() => setShowAddModal(false)}
+              />
+            )}
+            <EmployeeTable
+    employees={sortedFilteredEmployees}
+    favorites={favorites}
+    selectedEmployees={selectedEmployees}
+    setSelectedEmployees={setSelectedEmployees}
+    removeFavorite={removeFavorite}
+    removeExtraEmployee={removeExtraEmployee}
+    saveFavorite={saveFavorite}
+    hideEmployee={hideEmployee}
+    isFavoriteEligible={isFavoriteEligible}
+  />
+            {selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length > 0 && (
+              <div style={{display:'flex', gap: '10px', flexWrap: 'wrap'}}>
+                <button type="button" className="submit-btn" onClick={submitOrder}>
+                  Захиалга илгээх ({selectedEmployees.filter(id => sortedFilteredEmployees.find(e => e.id === id)).length} ажилтан)
+                </button>
+                <button type="button" className="approve-btn" onClick={saveShift}>
+                  Ээлж хадгалах
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
-    </div>
-  );
-}
-export default KitchenView;
+    );
+  }
+
+  export default KitchenView;
