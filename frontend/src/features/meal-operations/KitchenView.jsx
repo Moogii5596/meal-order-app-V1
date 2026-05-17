@@ -26,7 +26,6 @@ import { useEmployees } from '../../hooks/useEmployees';
 import { useToast }     from '../../hooks/useToast';
 import {
   DEFAULT_MEAL,
-  LOCATION_LABELS,
   MEAL_SHORT_LABELS,
 } from '../../constants';
 import {
@@ -1174,24 +1173,6 @@ function KitchenView() {
     );
     setSelectedIds((prev) => prev.includes(emp.id) ? prev : [...prev, emp.id]);
     saveExtraEmployee(emp, tab).catch(() => {});
-  };
-
-  const handleSaveShift = () => {
-    const ids = selectedIds
-      .map((id) => [...employees, ...extraEmployees].find((e) => e.id === id))
-      .filter((emp) => emp && isFavoriteEligible(emp))
-      .map((emp) => emp.id);
-    if (!ids.length) { showToast('Хадгалах боломжтой ажилтан сонгоогүй', 'error'); return; }
-    Promise.all(ids.map(saveFavoriteApi))
-      .then(() => { setFavorites((p) => [...new Set([...p, ...ids])]); showToast('Ээлж хадгалагдлаа ✓'); })
-      .catch(() => showToast('Ээлж хадгалахад алдаа гарлаа', 'error'));
-  };
-
-  const handleRefreshShift = () => {
-    if (!window.confirm('Та ээлжээ шинэчлэх үү?')) return;
-    clearAllMyEmployees()
-      .then(() => { setFavorites([]); setExtraEmployees([]); setHiddenIds([]); setSelectedIds([]); loadEmployees(); showToast('Ээлж шинэчлэгдлээ'); })
-      .catch(() => showToast('Алдаа гарлаа', 'error'));
   };
 
   const _submitOrder = () => {
