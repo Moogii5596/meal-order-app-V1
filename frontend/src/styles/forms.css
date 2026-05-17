@@ -1,0 +1,121 @@
+/* ── Action buttons ─────────────────────────────────────────────────────────── */
+.action-btn {
+  padding: 6px 14px;
+  margin-left: 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.action-btn:hover { border-color: #1677ff; color: #1677ff; }
+
+/* ── Submit + save shift button row ─────────────────────────────────────────── */
+.submit-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.submit-btn {
+  margin-top: 16px;
+  padding: 14px;
+  width: 100%;
+  background: #52c41a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover    { background: #389e0d; }
+.submit-btn:disabled { background: #d9d9d9; cursor: not-allowed; }
+
+/* ── Login box ──────────────────────────────────────────────────────────────── */
+.login-box {
+  max-width: 360px;
+  margin: 100px auto;
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.login-box h1 {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 22px;
+  color: #1a1a2e;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.login-box input:focus {
+  outline: none;
+  border-color: #1677ff;
+}
+
+/* ── Login / logout buttons ─────────────────────────────────────────────────── */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: #1677ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-btn:hover    { background: #0958d9; }
+.login-btn:disabled { background: #d9d9d9; cursor: not-allowed; }
+
+.logout-btn {
+  padding: 7px 16px;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.logout-btn:hover { background: #cf1322; }
+
+/* ── Approve / confirm buttons ──────────────────────────────────────────────── */
+.approve-btn {
+  padding: 6px 16px;
+  background: #1677ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.approve-btn:hover { background: #0958d9; }
+
+.confirm-btn {
+  padding: 6px 16px;
+  background: #52c41a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.confirm-btn:hover { background: #389e0d; }

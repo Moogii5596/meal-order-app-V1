@@ -4,8 +4,8 @@ import Toast from '../ui/Toast';
 import PageLoader from '../ui/PageLoader'; 
 import EmptyState from '../ui/EmptyState';
 import { useToast } from '../../hooks/useToast';
-import { MEAL_LABELS, STATE_TABS,} from '../../shared/constants';
-import { fetchOrders, approveOrder, confirmOrder, rejectOrder, deleteOrder, fetchOrderDetail } from '../../services/orders';
+import { MEAL_LABELS, STATE_TABS } from '../../constants';
+import { fetchOrders, approveOrder, confirmOrder, fetchOrderDetail } from '../../services/orders';
 import { useAuth } from '../../context/AuthContext';
 
 function OrdersView() {
@@ -150,69 +150,6 @@ function OrdersView() {
 
   };
 
-  // ─────────────────────────────
-  // REJECT
-  // ─────────────────────────────
-  const handleReject = async (orderId) => {
-
-    try {
-
-      await rejectOrder(orderId);
-
-      showToast(
-        'Захиалга цуцлагдлаа',
-        'success'
-      );
-
-      loadOrders();
-
-    } catch (err) {
-
-      console.error(err);
-
-      showToast(
-        err.message || 'Reject алдаа',
-        'error'
-      );
-
-    }
-
-  };
-
-  // ─────────────────────────────
-  // DELETE
-  // ─────────────────────────────
-  const handleDelete = async (orderId) => {
-
-    const confirmed = window.confirm(
-      'Энэ захиалгыг устгах уу?'
-    );
-
-    if (!confirmed) return;
-
-    try {
-
-      await deleteOrder(orderId);
-
-      showToast(
-        'Захиалга устгагдлаа',
-        'success'
-      );
-
-      loadOrders();
-
-    } catch (err) {
-
-      console.error(err);
-
-      showToast(
-        err.message || 'Delete алдаа',
-        'error'
-      );
-
-    }
-
-  };
 
   // ─────────────────────────────
   // FILTERED ORDERS
@@ -304,6 +241,7 @@ function OrdersView() {
       {/* TABLE */}
       {filteredOrders.length > 0 && (
 
+        <div className="table-scroll">
         <table className="orders-table">
 
           <thead>
@@ -342,57 +280,15 @@ function OrdersView() {
                 <td>{order.state}</td>
 
                 <td>
+                  <button onClick={() => openOrder(order.id)}>Харах</button>
 
-                  <button
-                    onClick={() =>
-                      openOrder(order.id)
-                    }
-                  >
-                    Харах
-                  </button>
-
-                  {role ===
-                    'category_manager' &&
-                    order.state === 'draft' && (
-                    <>
-                      <button
-                        onClick={() =>
-                          handleApprove(order.id)
-                        }
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          handleReject(order.id)
-                        }
-                      >
-                        Reject
-                      </button>
-                    </>
+                  {role === 'category_manager' && order.state === 'draft' && (
+                    <button onClick={() => handleApprove(order.id)}>Батлах</button>
                   )}
 
-                  {role ===
-                    'camp_manager' &&
-                    order.state === 'approved' && (
-                    <button
-                      onClick={() =>
-                        handleConfirm(order.id)
-                      }
-                    >
-                      Confirm
-                    </button>
+                  {role === 'camp_manager' && order.state === 'done' && (
+                    <button onClick={() => handleConfirm(order.id)}>Баталгаажуулах</button>
                   )}
-
-                  <button
-                    onClick={() =>
-                      handleDelete(order.id)
-                    }
-                  >
-                    Устгах
-                  </button>
-
                 </td>
 
               </tr>
@@ -402,6 +298,7 @@ function OrdersView() {
           </tbody>
 
         </table>
+        </div>
 
       )}
 
@@ -415,11 +312,9 @@ function OrdersView() {
         />
       )}
 
-      {/* TOAST */}
-      <Toast
-        toast={toast}
-        onClose={hideToast}
-      />
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
 
     </div>
   );

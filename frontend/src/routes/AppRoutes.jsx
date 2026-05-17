@@ -1,10 +1,10 @@
 import React from 'react';
 import CampManagerView
-  from '../components/camp/CampManagerView';
+  from '../features/reconciliation/CampManagerView';
 import KitchenView
-  from '../components/kitchen/KitchenView';
+  from '../features/meal-operations/KitchenView';
 import OrdersView
-  from '../components/orders/OrdersView';
+  from '../features/meal-operations/OrdersView';
 import ProtectedRoute
   from './ProtectedRoute';
 function AppRoutes() {

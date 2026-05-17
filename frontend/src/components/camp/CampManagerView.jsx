@@ -1,18 +1,19 @@
+import React, { useState } from 'react';
 import CampOrdersView from './CampOrdersView';
 import CampFavView from './CampFavView';
-import { useState } from 'react';
 
-export default function CampManagerView({ token }) {
+const TABS = [
+  { key: 'orders',  label: '📋 Захиалга хянах' },
+  { key: 'fav',     label: '⭐ Fav жагсаалт' },
+  { key: 'reports', label: '📊 Тайлан' },
+];
+
+function CampManagerView() {
   const [activeTab, setActiveTab] = useState('orders');
-
-  const tabs = [
-    { key: 'orders', label: '📋 Захиалга хянах' },
-    { key: 'fav', label: '⭐ Fav жагсаалт' },
-    { key: 'reports', label: '📊 Тайлан' },
-  ];
 
   return (
     <div>
+      {/* Tab bar */}
       <div
         style={{
           display: 'flex',
@@ -24,10 +25,10 @@ export default function CampManagerView({ token }) {
           boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
         }}
       >
-        {tabs.map(t => (
+        {TABS.map((tab) => (
           <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
             style={{
               flex: 1,
               padding: '10px 0',
@@ -35,46 +36,29 @@ export default function CampManagerView({ token }) {
               borderRadius: 7,
               cursor: 'pointer',
               fontSize: 14,
-              fontWeight: activeTab === t.key ? 700 : 400,
-              background: activeTab === t.key ? '#1677ff' : 'transparent',
-              color: activeTab === t.key ? 'white' : '#555',
+              fontWeight: activeTab === tab.key ? 700 : 400,
+              background: activeTab === tab.key ? '#1677ff' : 'transparent',
+              color: activeTab === tab.key ? 'white' : '#555',
               transition: 'all 0.15s',
             }}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'orders' && <CampOrdersView token={token} />}
-
-      {activeTab === 'fav' && <CampFavView token={token} />}
-
+      {/* Tab content */}
+      {activeTab === 'orders'  && <CampOrdersView />}
+      {activeTab === 'fav'     && <CampFavView />}
       {activeTab === 'reports' && (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            color: '#aaa',
-          }}
-        >
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#aaa' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: '#666',
-            }}
-          >
-            Тайлан
-          </div>
-
-          <div style={{ fontSize: 13, marginTop: 8 }}>
-            Тохиргоотой хамт удахгүй нэмэгдэнэ
-          </div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: '#666' }}>Тайлан</div>
+          <div style={{ fontSize: 13, marginTop: 8 }}>Тохиргоотой хамт удахгүй нэмэгдэнэ</div>
         </div>
       )}
     </div>
   );
 }
+
+export default CampManagerView;

@@ -1,132 +1,98 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState
-} from 'react';
+/**
+ * Auth context — the single source of truth for authentication state.
+ *
+ * Provides: token, role, userDept, userLocation, isLoadingAuth, login, logout
+ *
+ * Usage:
+ *   const { role, login, logout } = useAuth();
+ */
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  clearAuthToken,
+  getMeRequest,
+  getStoredToken,
+  loginRequest,
+  saveAuthToken,
+} from '../services/auth';
 
-const API =
-  process.env.REACT_APP_API_URL
-
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(null);
-  const [role, setRole] = useState(null);
-  const [userDept, setUserDept] = useState(null);
+  const [token, setToken]               = useState(null);
+  const [role, setRole]                 = useState(null);
+  const [userDept, setUserDept]         = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  // App start үед localStorage-оос auth сэргээх
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const applySession = useCallback((data) => {
+    setRole(data.role);
+    if (data.dept_id) {
+      setUserDept({ id: String(data.dept_id), name: data.dept_name });
+    }
+    if (data.location) {
+      setUserLocation(data.location);
+    }
+  }, []);
+
+  const clearSession = useCallback(() => {
+    clearAuthToken();
+    setToken(null);
+    setRole(null);
+    setUserDept(null);
+    setUserLocation(null);
+  }, []);
+
+  // ── Restore session on mount ───────────────────────────────────────────────
+
   useEffect(() => {
-    const storedToken =
-      localStorage.getItem('authToken');
+    const storedToken = getStoredToken();
 
     if (!storedToken) {
       setIsLoadingAuth(false);
       return;
     }
 
-    fetch(`${API}/me`, {
-      headers: {
-        Authorization: `Bearer ${storedToken}`
-      }
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Unauthorized');
-        }
-
-        return res.json();
-      })
-      .then(data => {
+    // Validate the stored token with the server
+    getMeRequest()
+      .then((data) => {
         setToken(storedToken);
-        setRole(data.role);
-
-        if (data.dept_id) {
-          setUserDept({
-            id: String(data.dept_id),
-            name: data.dept_name
-          });
-        }
-
-        if (data.location) {
-          setUserLocation(data.location);
-        }
+        applySession(data);
       })
       .catch(() => {
-        logout();
+        clearSession();
       })
       .finally(() => {
         setIsLoadingAuth(false);
       });
+  }, [applySession, clearSession]);
 
-  }, []);
+  // ── Login ─────────────────────────────────────────────────────────────────
 
-  // Login
-  const login = async (username, password) => {
-    const res = await fetch(`${API}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username,
-        password
-      })
-    });
-
-    const data = await res.json();
+  const login = useCallback(async (username, password) => {
+    const data = await loginRequest(username, password);
 
     if (!data.success) {
-      throw new Error(
-        'Нэвтрэх нэр эсвэл нууц үг буруу'
-      );
+      throw new Error('Нэвтрэх нэр эсвэл нууц үг буруу');
     }
 
-    localStorage.setItem(
-      'authToken',
-      data.token
-    );
-
+    saveAuthToken(data.token);
     setToken(data.token);
-    setRole(data.role);
-
-    if (data.dept_id) {
-      setUserDept({
-        id: String(data.dept_id),
-        name: data.dept_name
-      });
-    }
-
-    if (data.location) {
-      setUserLocation(data.location);
-    }
+    applySession(data);
 
     return data;
-  };
+  }, [applySession]);
 
-  // Logout
-  const logout = () => {
-    localStorage.removeItem('authToken');
+  // ── Logout ────────────────────────────────────────────────────────────────
 
-    setToken(null);
-    setRole(null);
-    setUserDept(null);
-    setUserLocation(null);
-  };
+  const logout = useCallback(() => {
+    clearSession();
+  }, [clearSession]);
 
   return (
     <AuthContext.Provider
-      value={{
-        token,
-        role,
-        userDept,
-        userLocation,
-        isLoadingAuth,
-        login,
-        logout
-      }}
+      value={{ token, role, userDept, userLocation, isLoadingAuth, login, logout }}
     >
       {children}
     </AuthContext.Provider>
@@ -134,5 +100,7 @@ export function AuthProvider({ children }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
+  return ctx;
 }

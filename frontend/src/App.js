@@ -1,126 +1,27 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './App.css';
-import { useAuth }
-  from './context/AuthContext';
-import AppRoutes
-  from './routes/AppRoutes';
-const ROLE_LABELS = {
-  kitchen_staff: 'Хоолны захиалагч',
-  category_manager: 'Хоолны захиалга хянагч ТН',
-  camp_manager: 'Кемп менежер',
-};
+import { useAuth } from './context/AuthContext';
+import LoginForm from './components/auth/LoginForm';
+import AppHeader from './components/layout/AppHeader';
+import AppRoutes from './routes/AppRoutes';
 
 function App() {
+  const { role, isLoadingAuth } = useAuth();
 
-  const {
-    role,
-    login,
-    logout
-  } = useAuth();
+  if (isLoadingAuth) {
+    return <div className="login-box">Шалгаж байна...</div>;
+  }
 
-  const [loginName, setLoginName] =
-    useState('');
-
-  const [loginPass, setLoginPass] =
-    useState('');
-
-  // LOGIN
-  const handleLogin = async () => {
-
-    try {
-
-      await login(
-        loginName,
-        loginPass
-      );
-
-    } catch (err) {
-
-      alert(err.message);
-
-    }
-
-  };
-
-  // LOGIN SCREEN
   if (!role) {
-
-    return (
-      <div className="login-box">
-
-        <h1>Camp Meal Login</h1>
-
-        <input
-          type="text"
-          placeholder="Нэвтрэх нэр"
-          value={loginName}
-          onChange={e =>
-            setLoginName(e.target.value)
-          }
-          onKeyDown={e =>
-            e.key === 'Enter' &&
-            handleLogin()
-          }
-        />
-
-        <input
-          type="password"
-          placeholder="Нууц үг"
-          value={loginPass}
-          onChange={e =>
-            setLoginPass(e.target.value)
-          }
-          onKeyDown={e =>
-            e.key === 'Enter' &&
-            handleLogin()
-          }
-        />
-
-        <button
-          className="login-btn"
-          onClick={handleLogin}
-        >
-          Нэвтрэх
-        </button>
-
-      </div>
-    );
-
+    return <LoginForm />;
   }
 
   return (
     <div className="App">
-
-      <div className="App-header">
-
-        <div className="header-row">
-
-          <div>
-
-            <h1>
-              Хоолны захиалга
-            </h1>
-
-            <span className="role-badge">
-              {ROLE_LABELS[role]}
-            </span>
-
-          </div>
-
-          <button
-            className="logout-btn"
-            onClick={logout}
-          >
-            Гарах
-          </button>
-
-        </div>
-
-      </div>
-
+      <AppHeader />
       <AppRoutes />
-
     </div>
   );
 }
+
 export default App;

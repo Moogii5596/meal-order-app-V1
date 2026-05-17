@@ -1,167 +1,111 @@
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useRef
-} from 'react';
+/**
+ * useEmployees — manages the employee list for the kitchen shift view.
+ *
+ * Fetches employees when dept/date/meal changes (with abort on re-fetch),
+ * and loads the current user's favorites, extras, and hidden list on mount.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchEmployees, fetchMyEmployees } from '../services/employees';
 
-import {
-  fetchEmployees,
-  fetchMyEmployees
-} from '../services/employees';
-
-export function useEmployees({
-  selectedDept,
-  selectedDate,
-  selectedMeal,
-  userLocation
-}) {
-
-  const [employees, setEmployees] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [hiddenIds, setHiddenIds] = useState([]);
+export function useEmployees({ selectedDept, selectedDate, selectedMeal, userLocation }) {
+  const [employees, setEmployees]         = useState([]);
+  const [favorites, setFavorites]         = useState([]);
+  const [hiddenIds, setHiddenIds]         = useState([]);
   const [extraEmployees, setExtraEmployees] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const loadAbortController = useRef(null);
+  const [loading, setLoading]             = useState(false);
 
-  // ─────────────────────────────
-  // LOAD EMPLOYEES
-  // ─────────────────────────────
+  const abortControllerRef = useRef(null);
+
+  // ── Load department employees ─────────────────────────────────────────────
+
   const loadEmployees = useCallback(
-    (autoSelect = true) => {
-
+    () => {
       if (!selectedDept) return;
+
+      // Cancel any in-flight request
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       setLoading(true);
 
-      if (loadAbortController.current) {
-        loadAbortController.current.abort();
-      }
+      fetchEmployees(selectedDept, selectedDate, selectedMeal, controller.signal)
+        .then((data) => {
+          let list = data.employees || [];
 
-      const controller = new AbortController();
-      loadAbortController.current = controller;
-
-      fetchEmployees(
-        selectedDept,
-        selectedDate,
-        selectedMeal,
-        controller.signal
-      )
-        .then(data => {
-          let employees =
-            data.employees || [];
-            console.log('RAW DATA:', data);
-            console.log('EMPLOYEES:', employees);
-            console.log('USER LOCATION:', userLocation);
-
+          // Filter by user's assigned location if set
           if (userLocation) {
-            employees = employees.filter(
-              e =>
-                e.location
-                  ?.trim()
-                  .toLowerCase() ===
-                userLocation
-                  .trim()
-                  .toLowerCase()
+            list = list.filter(
+              (emp) =>
+                emp.location?.trim().toLowerCase() === userLocation.trim().toLowerCase(),
             );
           }
 
-          setEmployees(employees);
+          setEmployees(list);
         })
-        .catch(error => {
+        .catch((error) => {
           if (error.name === 'AbortError') return;
+          setEmployees([]);
         })
         .finally(() => {
-          if (loadAbortController.current === controller) {
+          // Only clear loading if this is still the current controller
+          if (abortControllerRef.current === controller) {
             setLoading(false);
           }
         });
     },
-    [
-      selectedDept,
-      selectedDate,
-      selectedMeal,
-      userLocation
-    ]
+    [selectedDept, selectedDate, selectedMeal, userLocation],
   );
 
-  // ─────────────────────────────
-  // AUTO LOAD
-  // ─────────────────────────────
+  // Auto-reload when dependencies change
   useEffect(() => {
     loadEmployees();
-
-    return () => {
-      loadAbortController.current?.abort();
-    };
+    return () => abortControllerRef.current?.abort();
   }, [loadEmployees]);
 
-  // ─────────────────────────────
-  // MY EMPLOYEES
-  // ─────────────────────────────
+  // ── Load user's saved lists ───────────────────────────────────────────────
+
   useEffect(() => {
-
     const controller = new AbortController();
+
     fetchMyEmployees(controller.signal)
-      .then(data => {
-
-        setFavorites(
-          data.favorites || []
-        );
-
-        setHiddenIds(
-          data.hidden || []
-        );
-
-        const extras =
-          data.extra_employees || [];
-
+      .then((data) => {
+        setFavorites(data.favorites || []);
+        setHiddenIds(data.hidden || []);
         setExtraEmployees(
-          extras.map(e => ({
-            id: e.id,
-            extra_type: e.extra_type,
-            name: e.name || '',
-            last_name: e.last_name || '',
-            dept_name: e.dept_name || '',
-            job_title: e.job_title || '',
-            location: e.location || '',
+          (data.extra_employees || []).map((emp) => ({
+            id: emp.id,
+            extra_type: emp.extra_type,
+            name: emp.name || '',
+            last_name: emp.last_name || '',
+            dept_name: emp.dept_name || '',
+            job_title: emp.job_title || '',
+            location: emp.location || '',
             is_extra: true,
-            is_swiped: false
-          }))
+            is_swiped: false,
+          })),
         );
-
       })
-      .catch(error => {
+      .catch((error) => {
         if (error.name === 'AbortError') return;
-
         setFavorites([]);
         setExtraEmployees([]);
         setHiddenIds([]);
-
       });
 
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, []);
 
   return {
-
     employees,
     setEmployees,
-
     favorites,
     setFavorites,
-
     hiddenIds,
     setHiddenIds,
-
     extraEmployees,
     setExtraEmployees,
-
     loading,
-
-    loadEmployees
-
+    loadEmployees,
   };
 }

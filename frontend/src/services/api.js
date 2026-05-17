@@ -1,43 +1,49 @@
-const API = process.env.REACT_APP_API_URL;
+/**
+ * Base API fetch wrapper.
+ *
+ * - Automatically attaches the Authorization header from localStorage.
+ * - Throws a typed Error on non-2xx responses with status attached.
+ * - Returns null for 204 No Content.
+ */
+import { API_URL } from '../constants';
+
 function getAuthToken() {
   return localStorage.getItem('authToken');
 }
-export async function apiFetch(
-  endpoint,
-  options = {}
-) {
+
+export async function apiFetch(endpoint, options = {}) {
   const token = getAuthToken();
+
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...options.headers,
   };
+
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(
-    `${API}${endpoint}`,
-    {
-      ...options,
-      headers
-    }
-  );
-  if (!res.ok) {
-    let errorMessage =
-      `HTTP ${res.status}: ${res.statusText}`;
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}: ${response.statusText}`;
     try {
-      const errorData = await res.json();
-      errorMessage =
-        errorData.message ||
-        errorData.error ||
-        errorMessage;
-    } catch (e) {
+      const errorData = await response.json();
+      message = errorData.detail || errorData.message || errorData.error || message;
+    } catch {
+      // body was not JSON — use the status message
     }
-    const error = new Error(errorMessage);
-    error.status = res.status;
+    const error = new Error(message);
+    error.status = response.status;
     throw error;
   }
-  if (res.status === 204) {
+
+  if (response.status === 204) {
     return null;
   }
-  return res.json();
+
+  return response.json();
 }
