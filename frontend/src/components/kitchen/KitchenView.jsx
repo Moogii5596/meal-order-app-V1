@@ -17,7 +17,8 @@
     const [selectedMeal, setSelectedMeal] = useState('lunch');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedLocation, setSelectedLocation] = useState('');
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false); 
+    const [didAutoInit, setDidAutoInit] = useState(false);
     const { toast, showToast, hideToast } = useToast();
     const {
     employees,
@@ -40,7 +41,6 @@
     selectedDept,
     selectedDate,
     selectedMeal,
-    token,
     userLocation
   });
 
@@ -66,14 +66,20 @@
     };
 
     useEffect(() => { 
-      if ( favorites.length === 0 && employees.length > 0 ) 
+      if (
+          !didAutoInit &&
+            favorites.length === 0 &&
+            employees.length > 0
+          ) 
         { 
           const employeeIds = employees.map(e => e.id); 
           setFavorites(employeeIds); 
           employeeIds.forEach(id => { 
             saveFavoriteEmployee(id) 
-            .catch(console.error); }); } }, [ 
-              employees, favorites, setFavorites ]);
+            .catch(console.error); });
+            setDidAutoInit(true);
+           } }, [ 
+              employees, favorites, didAutoInit, setFavorites]);
 
     useEffect(() => {
       if (extraEmployees.length === 0) return;
