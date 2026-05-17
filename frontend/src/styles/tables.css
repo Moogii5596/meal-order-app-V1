@@ -134,22 +134,93 @@
 }
 
 .row-draft td:first-child { border-left: 3px solid #faad14; }
+.row-draft { background: #fffdf5 !important; }
+
+/* ── Submitted-by cell — one line, tooltip on hover ────────────────────────── */
+.cell-submitter {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #555;
+}
+
+/* ── Date cell ──────────────────────────────────────────────────────────────── */
+.cell-date {
+  font-size: 12px;
+  color: #444;
+  white-space: nowrap;
+}
 
 /* ── Expanded detail panel ──────────────────────────────────────────────────── */
 .row-expanded-panel td {
   padding: 0;
-  background: #f9fbff;
-  border-bottom: 2px solid #d6e8ff;
+  background: #f5f9ff;
+  border-top: 1px solid #dbeafe;
+  border-bottom: 2px solid #bfdbfe;
 }
 
 .expand-panel {
-  padding: 14px 20px;
+  padding: 14px 20px 16px;
   display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
 }
 
+/* Panel header: title + count pill */
+.expand-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1677ff;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.expand-panel-count {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Employee chip grid */
+.emp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.emp-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  background: white;
+  border: 1px solid #bae0ff;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #1d4ed8;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.emp-chip:hover { background: #eff6ff; }
+
+.emp-chips-empty {
+  font-size: 12px;
+  color: #bbb;
+  font-style: italic;
+}
+
+/* Legacy expand-stat (used in components/camp/OrderRow) */
 .expand-stat {
   display: flex;
   flex-direction: column;
@@ -171,18 +242,31 @@
 
 /* ── Expand toggle button ───────────────────────────────────────────────────── */
 .expand-btn {
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #f0f5ff;
+  border: 1px solid #bae0ff;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 16px;
   color: #1677ff;
-  padding: 4px 6px;
-  border-radius: 4px;
-  transition: background 0.1s;
-  white-space: nowrap;
+  line-height: 1;
+  padding: 0;
+  /* rotate ‹ into ∨ */
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease, background 0.12s;
+  flex-shrink: 0;
 }
 
-.expand-btn:hover { background: #e6f4ff; }
+.expand-btn.expanded {
+  transform: rotate(90deg);
+  background: #dbeafe;
+}
+
+.expand-btn:hover { background: #dbeafe; }
 
 /* ── Order name + ID cell ───────────────────────────────────────────────────── */
 .order-name-cell { display: flex; flex-direction: column; gap: 1px; }

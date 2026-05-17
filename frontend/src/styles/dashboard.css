@@ -213,11 +213,40 @@
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+  color: #555;
 }
 
-.dash-action-btn:hover { border-color: #1677ff; color: #1677ff; }
-.dash-action-btn.btn-approve { border-color: #1677ff; color: #1677ff; }
-.dash-action-btn.btn-confirm { border-color: #52c41a; color: #52c41a; }
+.dash-action-btn:hover {
+  border-color: #1677ff;
+  color: #1677ff;
+  background: #f0f7ff;
+}
+
+/* Батлах — filled blue pill */
+.dash-action-btn.btn-approve {
+  background: #1677ff;
+  border-color: #1677ff;
+  color: white;
+  border-radius: 20px;
+}
+.dash-action-btn.btn-approve:hover {
+  background: #0958d9;
+  border-color: #0958d9;
+  color: white;
+}
+
+/* Баталгаажуулах — filled green pill */
+.dash-action-btn.btn-confirm {
+  background: #52c41a;
+  border-color: #52c41a;
+  color: white;
+  border-radius: 20px;
+}
+.dash-action-btn.btn-confirm:hover {
+  background: #389e0d;
+  border-color: #389e0d;
+  color: white;
+}
 
 /* ── Pagination bar ─────────────────────────────────────────────────────────── */
 .dash-pagination {

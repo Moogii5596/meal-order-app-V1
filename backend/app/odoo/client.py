@@ -78,6 +78,9 @@ GROUP_ROLE_MAP: dict[str, str] = {
 # Rental department search keyword — change here only
 RENTAL_DEPT_KEYWORD = "түрээс"
 
+# Rental driver filter — hr.employee.status whose type = "contract"
+RENTAL_DRIVER_STATUS_TYPE = "contract"
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 

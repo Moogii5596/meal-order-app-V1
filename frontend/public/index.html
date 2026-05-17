@@ -3,28 +3,98 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <!-- Mobile-first viewport: prevents user scaling on industrial tablets -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Хоол захиалгийн систем — Mining camp meal ordering"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
+    <!-- ── Tailwind CSS (CDN / JIT) ──────────────────────────────────────
+         Full utility class set including dark mode support.
+         For production: replace with proper PostCSS build pipeline.
+         npm install -D tailwindcss postcss autoprefixer && npx tailwindcss init -p
+    ─────────────────────────────────────────────────────────────────────── -->
+    <script>
+      tailwind = {
+        config: {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+              },
+              colors: {
+                slate: {
+                  650: '#475569',
+                  750: '#334155',
+                  850: '#1e293b',
+                  950: '#020617',
+                },
+              },
+              borderRadius: {
+                '2xl': '1rem',
+                '3xl': '1.5rem',
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Inter font for industrial readability -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Global mobile baseline styles -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html { -webkit-text-size-adjust: 100%; transition: background-color 0.2s; }
+      body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; transition: background-color 0.2s, color 0.2s; }
+      input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.7; cursor: pointer; filter: none; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* ── Full-page dark mode ── toggled via data-dark="true" on <html> ── */
+      html[data-dark="true"],
+      html[data-dark="true"] body,
+      html[data-dark="true"] #root,
+      html[data-dark="true"] .App { background-color: #0f172a !important; color: #f8fafc; }
+
+      html[data-dark="true"] .App-header {
+        background: #1e293b !important;
+        border-bottom: 1px solid #334155 !important;
+        box-shadow: 0 1px 0 #334155 !important;
+      }
+      html[data-dark="true"] .App-header h1 { color: #f1f5f9 !important; }
+      html[data-dark="true"] .App-header .role-badge {
+        background: #334155 !important;
+        color: #94a3b8 !important;
+        border-color: #475569 !important;
+      }
+      html[data-dark="true"] .logout-btn {
+        background: #334155 !important;
+        color: #e2e8f0 !important;
+        border-color: #475569 !important;
+      }
+      html[data-dark="true"] .logout-btn:hover {
+        background: #475569 !important;
+      }
+
+      /* calendar picker in dark mode */
+      html[data-dark="true"] input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1) brightness(0.8);
+      }
+    </style>
+
+    <title>Хоол захиалга</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

@@ -25,7 +25,7 @@ sync table in a future sync architecture.
 from __future__ import annotations
 
 from app.odoo.cache import odoo_cache
-from app.odoo.client import RENTAL_DEPT_KEYWORD
+from app.odoo.client import RENTAL_DEPT_KEYWORD, RENTAL_DRIVER_STATUS_TYPE
 from app.odoo.executor import admin_session
 
 
@@ -96,32 +96,38 @@ def search_employees_global(query: str) -> list[dict]:
 
 def get_rental_employees(query: str = "") -> list[dict]:
     """
-    Return employees whose department name matches RENTAL_DEPT_KEYWORD.
+    Return employees whose hr.employee.status has type = RENTAL_DRIVER_STATUS_TYPE
+    (i.e. state_id.type = "contract" — Түрээсийн жолооч).
 
     Unfiltered roster (query="") is cached for 5 minutes — the cohort is
     stable within a shift.  Name-filtered requests bypass the cache.
     """
-    base_domain = [["department_id.name", "ilike", RENTAL_DEPT_KEYWORD]]
+    base_domain = [["state_id.type", "=", RENTAL_DRIVER_STATUS_TYPE]]
 
     if query:
-        # Dynamic — not cached
+        # Dynamic — not cached; search both name and last_name
+        name_filter = [
+            "|",
+            ["name", "ilike", query],
+            ["last_name", "ilike", query],
+        ]
         raw = admin_session().search_read(
             "hr.employee",
-            base_domain + [["name", "ilike", query]],
-            ["id", "name", "last_name", "job_id", "department_id", "location"],
-            limit=200,
+            base_domain + name_filter,
+            ["id", "name", "last_name", "job_id", "department_id", "location", "state_id"],
+            limit=500,
         )
         return _annotate(raw)
 
     # Full roster — cache the annotated result
     return odoo_cache.get_or_set(
-        "rental_employees",
+        "rental_driver_employees",
         lambda: _annotate(
             admin_session().search_read(
                 "hr.employee",
                 base_domain,
-                ["id", "name", "last_name", "job_id", "department_id", "location"],
-                limit=200,
+                ["id", "name", "last_name", "job_id", "department_id", "location", "state_id"],
+                limit=500,
             )
         ),
         ttl=300,
@@ -131,9 +137,10 @@ def get_rental_employees(query: str = "") -> list[dict]:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _annotate(employees: list[dict]) -> list[dict]:
-    """Add is_swiped / job_title / dept_name fields to a raw employee list."""
+    """Add is_swiped / job_title / dept_name / status_name fields to a raw employee list."""
     for emp in employees:
-        emp["is_swiped"] = False
-        emp["job_title"] = emp["job_id"][1]        if emp["job_id"]        else "Тодорхойгүй"
-        emp["dept_name"] = emp["department_id"][1] if emp["department_id"] else "Тодорхойгүй"
+        emp["is_swiped"]    = False
+        emp["job_title"]    = emp["job_id"][1]        if emp["job_id"]        else "Тодорхойгүй"
+        emp["dept_name"]    = emp["department_id"][1] if emp["department_id"] else "Тодорхойгүй"
+        emp["status_name"]  = emp["state_id"][1]      if emp.get("state_id")  else ""
     return employees

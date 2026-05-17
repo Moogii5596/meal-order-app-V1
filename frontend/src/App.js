@@ -16,9 +16,12 @@ function App() {
     return <LoginForm />;
   }
 
+  // KitchenView has its own compact header with logout — skip AppHeader for kitchen roles
+  const showAppHeader = role === 'camp_manager';
+
   return (
     <div className="App">
-      <AppHeader />
+      {showAppHeader && <AppHeader />}
       <AppRoutes />
     </div>
   );

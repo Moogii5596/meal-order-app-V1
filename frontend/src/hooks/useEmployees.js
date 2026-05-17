@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchEmployees, fetchMyEmployees } from '../services/employees';
 
-export function useEmployees({ selectedDept, selectedDate, selectedMeal, userLocation }) {
+export function useEmployees({ selectedDept, selectedDate, selectedMeal, locationFilter }) {
   const [employees, setEmployees]         = useState([]);
   const [favorites, setFavorites]         = useState([]);
   const [hiddenIds, setHiddenIds]         = useState([]);
@@ -33,11 +33,11 @@ export function useEmployees({ selectedDept, selectedDate, selectedMeal, userLoc
         .then((data) => {
           let list = data.employees || [];
 
-          // Filter by user's assigned location if set
-          if (userLocation) {
+          // Filter by active list's location (or user's assigned location)
+          if (locationFilter) {
             list = list.filter(
               (emp) =>
-                emp.location?.trim().toLowerCase() === userLocation.trim().toLowerCase(),
+                emp.location?.trim().toLowerCase() === locationFilter.trim().toLowerCase(),
             );
           }
 
@@ -54,7 +54,7 @@ export function useEmployees({ selectedDept, selectedDate, selectedMeal, userLoc
           }
         });
     },
-    [selectedDept, selectedDate, selectedMeal, userLocation],
+    [selectedDept, selectedDate, selectedMeal, locationFilter],
   );
 
   // Auto-reload when dependencies change

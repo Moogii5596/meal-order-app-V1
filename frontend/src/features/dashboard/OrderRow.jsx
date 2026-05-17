@@ -53,13 +53,16 @@ function OrderRow({ order, isSelected, isExpanded, problem, onToggle, onOpen, on
           </div>
         </td>
 
-        {/* Submitted by */}
-        <td style={{ fontSize: 12, color: '#555' }}>
+        {/* Submitted by — truncated to one line, full name visible on hover */}
+        <td
+          className="cell-submitter"
+          title={order.submitted_by || order.created_by || ''}
+        >
           {order.submitted_by || order.created_by || <span style={{ color: '#ccc' }}>—</span>}
         </td>
 
         {/* Created datetime */}
-        <td style={{ fontSize: 12, color: '#444', whiteSpace: 'nowrap' }}>
+        <td className="cell-date">
           {fmtDatetime(order.order_date || order.create_date)}
         </td>
 
@@ -91,31 +94,35 @@ function OrderRow({ order, isSelected, isExpanded, problem, onToggle, onOpen, on
               <button className="dash-action-btn" onClick={onOpen}>Нээх</button>
             )}
             <button
-              className="expand-btn"
+              className={`expand-btn${isExpanded ? ' expanded' : ''}`}
               onClick={onToggleExpand}
               title={isExpanded ? 'Хаах' : 'Дэлгэрэнгүй'}
+              aria-label={isExpanded ? 'Хаах' : 'Дэлгэрэнгүй'}
             >
-              {isExpanded ? '▲' : '▼'}
+              ‹
             </button>
           </div>
         </td>
       </tr>
 
-      {/* ── Expand panel (if open) — shows summary of all employees in the order ── */}
+      {/* ── Expand panel — employee chip grid ── */}
       {isExpanded && (
-        <tr className="row-expand">
+        <tr className="row-expanded-panel">
           <td colSpan={999}>
-            <div className="expand-content">
-              <h4 style={{ margin: '0 0 8px', fontSize: 13 }}>Ажилчдын жагсаалт</h4>
-              <div style={{ fontSize: 12 }}>
+            <div className="expand-panel">
+              <div className="expand-panel-header">
+                <span className="expand-panel-title">Ажилчид</span>
+                <span className="expand-panel-count">
+                  {order.employee_names?.length ?? 0} хүн
+                </span>
+              </div>
+              <div className="emp-chips">
                 {order.employee_names && order.employee_names.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    {order.employee_names.map((name, i) => (
-                      <li key={i}>{name}</li>
-                    ))}
-                  </ul>
+                  order.employee_names.map((name, i) => (
+                    <span key={i} className="emp-chip">{name}</span>
+                  ))
                 ) : (
-                  <span style={{ color: '#aaa' }}>Ажилчид байхгүй</span>
+                  <span className="emp-chips-empty">Ажилчид байхгүй</span>
                 )}
               </div>
             </div>

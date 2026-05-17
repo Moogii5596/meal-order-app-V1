@@ -22,6 +22,9 @@ export function AuthProvider({ children }) {
   const [role, setRole]                 = useState(null);
   const [userDept, setUserDept]         = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [userName, setUserName]         = useState('');
+  const [userLastName, setUserLastName] = useState('');
+  const [userJobTitle, setUserJobTitle] = useState('');
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -31,9 +34,10 @@ export function AuthProvider({ children }) {
     if (data.dept_id) {
       setUserDept({ id: String(data.dept_id), name: data.dept_name });
     }
-    if (data.location) {
-      setUserLocation(data.location);
-    }
+    if (data.location)   setUserLocation(data.location);
+    if (data.name)       setUserName(data.name);
+    if (data.last_name)  setUserLastName(data.last_name);
+    if (data.job_title)  setUserJobTitle(data.job_title);
   }, []);
 
   const clearSession = useCallback(() => {
@@ -42,6 +46,9 @@ export function AuthProvider({ children }) {
     setRole(null);
     setUserDept(null);
     setUserLocation(null);
+    setUserName('');
+    setUserLastName('');
+    setUserJobTitle('');
   }, []);
 
   // ── Restore session on mount ───────────────────────────────────────────────
@@ -92,7 +99,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, role, userDept, userLocation, isLoadingAuth, login, logout }}
+      value={{ token, role, userDept, userLocation, userName, userLastName, userJobTitle, isLoadingAuth, login, logout }}
     >
       {children}
     </AuthContext.Provider>

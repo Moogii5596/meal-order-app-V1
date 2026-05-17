@@ -30,7 +30,7 @@ function OrderTable({
 }) {
   return (
     <div className="dash-table-wrap">
-      <table className="dash-orders-table">
+      <table className="dash-table">
         <thead>
           <tr>
             <th style={{ width: 40 }}>
