@@ -127,7 +127,7 @@
     setFavorites(prev =>
       prev.filter(id => id !== empId)
     );
-    setEmployees(prev =>
+    setSelectedEmployees(prev =>
     prev.filter(e => e.id !== empId)
      );
 
