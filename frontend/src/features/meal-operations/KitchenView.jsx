@@ -226,9 +226,6 @@ function KitchenView() {
     return 0;
   });
 
-  const swipedCount    = sortedFilteredEmployees.filter((e) => e.is_swiped).length;
-  const notSwipedCount = sortedFilteredEmployees.filter((e) => !e.is_swiped).length;
-
   const visibleSelectedCount = selectedEmployeeIds.filter((id) =>
     sortedFilteredEmployees.some((e) => e.id === id),
   ).length;

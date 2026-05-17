@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback} from 'react';
 import OrderModal from './OrderModal';
-import Toast from '../../components/ui/Toast';
-import PageLoader from '../../components/ui/PageLoader'; 
+import PageLoader from '../../components/ui/PageLoader';
 import EmptyState from '../../components/ui/EmptyState';
 import { useToast } from '../../hooks/useToast';
 import { MEAL_LABELS, STATE_TABS } from '../../constants';
@@ -20,11 +19,7 @@ function OrdersView() {
     useState('');
   const [selectedOrder, setSelectedOrder] =
     useState(null);
-  const {
-    toast,
-    showToast,
-    hideToast
-  } = useToast();
+  const { showToast } = useToast();
 
   // ─────────────────────────────
   // LOAD ORDERS

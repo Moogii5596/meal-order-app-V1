@@ -1,6 +1,5 @@
 import React from 'react';
-import { MEAL_LABELS } from '../../constants';
-import { MEAL_ICONS, fmtDatetime } from './campOrdersConstants';
+import { fmtDatetime } from './campOrdersConstants';
 import MealPill    from './MealPill';
 import SwipeBar    from './SwipeBar';
 import StateBadge  from './StateBadge';
