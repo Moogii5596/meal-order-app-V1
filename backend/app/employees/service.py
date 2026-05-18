@@ -138,6 +138,27 @@ def get_rental_employees(query: str = "") -> list[dict]:
     )
 
 
+def get_employees_by_ids(employee_ids: list[int]) -> list[dict]:
+    """
+    Fetch full hr.employee details for an explicit list of IDs.
+    Used by the camp manager to resolve favorite employee IDs to display names.
+    Returns an empty list when employee_ids is empty (no Odoo round-trip).
+    """
+    if not employee_ids:
+        return []
+
+    employees = admin_session().read(
+        "hr.employee",
+        employee_ids,
+        ["id", "name", "last_name", "job_id", "department_id", "location"],
+    )
+    for emp in employees:
+        emp["is_swiped"] = False
+        emp["job_title"] = emp["job_id"][1]        if emp["job_id"]        else "Тодорхойгүй"
+        emp["dept_name"] = emp["department_id"][1] if emp["department_id"] else "Тодорхойгүй"
+    return employees
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _annotate(employees: list[dict]) -> list[dict]:

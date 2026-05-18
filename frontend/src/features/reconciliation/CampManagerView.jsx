@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import CampOrdersView from '../dashboard/CampOrdersView';
-import CampFavView    from '../favorites/CampFavView';
-import GroupsManager  from '../groups/GroupsManager';
-import ReportingView  from '../reporting/ReportingView';
+import CampOrdersView       from '../dashboard/CampOrdersView';
+import CampFavView          from '../favorites/CampFavView';
+import GroupsManager        from '../groups/GroupsManager';
+import ReportingView        from '../reporting/ReportingView';
+import CampManagedOrdersView from '../camp-manager/orders/CampManagedOrdersView';
 
 const TABS = [
-  { key: 'orders',  label: '📋 Захиалга' },
-  { key: 'fav',     label: '⭐ Fav жагсаалт' },
-  { key: 'groups',  label: '👥 Бүлэг' },
-  { key: 'reports', label: '📊 Тайлан' },
+  { key: 'orders',          label: '📋 Захиалга' },
+  { key: 'managed-orders',  label: '📋 Ахлахуудын захиалга' },
+  { key: 'fav',             label: '⭐ Fav жагсаалт' },
+  { key: 'groups',          label: '👥 Бүлэг' },
+  { key: 'reports',         label: '📊 Тайлан' },
 ];
 
 function CampManagerView() {
@@ -54,10 +56,11 @@ function CampManagerView() {
       </div>
 
       {/* ── Tab content ── */}
-      {activeTab === 'orders'  && <CampOrdersView />}
-      {activeTab === 'fav'     && <CampFavView />}
-      {activeTab === 'groups'  && <GroupsManager />}
-      {activeTab === 'reports' && <ReportingView />}
+      {activeTab === 'orders'         && <CampOrdersView />}
+      {activeTab === 'managed-orders' && <CampManagedOrdersView />}
+      {activeTab === 'fav'            && <CampFavView />}
+      {activeTab === 'groups'         && <GroupsManager />}
+      {activeTab === 'reports'        && <ReportingView />}
     </div>
   );
 }

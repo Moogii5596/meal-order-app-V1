@@ -94,3 +94,16 @@ export function unhideEmployee(employeeId) {
     body: JSON.stringify({ employee_id: employeeId }),
   });
 }
+
+/**
+ * Resolve a list of employee IDs to full employee objects.
+ * Used by the camp manager to display names for favorite employee IDs.
+ * @param {number[]} employeeIds
+ * @returns {Promise<Array>}
+ */
+export function fetchEmployeesByIds(employeeIds) {
+  return apiFetch('/employees/by-ids', {
+    method: 'POST',
+    body: JSON.stringify({ employee_ids: employeeIds }),
+  });
+}

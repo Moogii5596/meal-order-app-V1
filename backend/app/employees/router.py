@@ -57,6 +57,19 @@ async def search_employees(q: str):
     return await _run(emp_svc.search_employees_global, q)
 
 
+@router.post("/employees/by-ids")
+async def get_employees_by_ids(data: dict):
+    """
+    Resolve a list of employee IDs to full employee objects.
+    Used by the camp manager to display names for favorite employee IDs.
+    Body: { "employee_ids": [1, 2, 3] }
+    """
+    ids = data.get("employee_ids", [])
+    if not isinstance(ids, list):
+        raise HTTPException(status_code=400, detail="employee_ids must be a list")
+    return await _run(emp_svc.get_employees_by_ids, ids)
+
+
 @router.get("/employees/rental")
 async def get_rental_employees(q: str = ""):
     return await _run(emp_svc.get_rental_employees, q)

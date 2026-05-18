@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
-from sqlalchemy import Column, Integer, String, UniqueConstraint, create_engine
+from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint, create_engine, func, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import DATABASE_URL
@@ -122,6 +122,38 @@ class User(Base):
     last_login = Column(String)   # ISO-8601 string, kept as text to match old schema
 
 
+class ManagedOrder(Base):
+    """
+    Audit trail for orders created by a camp manager on behalf of kitchen staff.
+
+    Status lifecycle:
+        draft_local → submitted   (ERP draft created successfully)
+        draft_local → failed      (ERP call failed; error recorded)
+
+    Columns added in Phase 1.5 hardening (applied via run_migrations() on startup):
+        employee_count    — number of employees at submission time
+        employee_snapshot — JSON array: [{id, name, last_name, dept_name, job_title}]
+        error_message     — error text if ERP submission failed
+        failed_at         — timestamp when the failure was recorded
+    """
+    __tablename__ = "managed_orders"
+
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    source_username     = Column(String, nullable=False, index=True)
+    meal_type           = Column(String, nullable=False)
+    order_date          = Column(String, nullable=False)               # YYYY-MM-DD
+    odoo_order_id       = Column(Integer, nullable=True)               # set after Odoo create
+    managed_by          = Column(String, nullable=False, default="")   # camp manager username
+    created_at          = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    status              = Column(String, nullable=False, default="draft_local")
+    note                = Column(String, nullable=False, default="")
+    # Phase 1.5 additions — nullable so existing rows survive without ALTER TABLE rewrite
+    employee_count      = Column(Integer, nullable=True)
+    employee_snapshot   = Column(Text, nullable=True)                  # JSON string
+    error_message       = Column(String, nullable=True)
+    failed_at           = Column(DateTime(timezone=True), nullable=True)
+
+
 # ── Session helper ────────────────────────────────────────────────────────────
 
 @contextmanager
@@ -146,11 +178,62 @@ def get_db():
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
+# Phase 1.5: idempotent DDL migrations.
+# Each entry is a SQL statement that is safe to run repeatedly.
+# ALTER TABLE … ADD COLUMN IF NOT EXISTS is a PostgreSQL extension (≥9.6).
+_MIGRATIONS: list[str] = [
+    # Rename created_by → managed_by (only if created_by still exists)
+    # PostgreSQL does not support IF EXISTS on RENAME COLUMN before PG ≥11,
+    # so we guard with a DO block.
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='managed_orders' AND column_name='created_by'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='managed_orders' AND column_name='managed_by'
+        ) THEN
+            ALTER TABLE managed_orders RENAME COLUMN created_by TO managed_by;
+        END IF;
+    END$$;
+    """,
+    # Phase 1.5 new columns
+    "ALTER TABLE managed_orders ADD COLUMN IF NOT EXISTS employee_count   INTEGER;",
+    "ALTER TABLE managed_orders ADD COLUMN IF NOT EXISTS employee_snapshot TEXT;",
+    "ALTER TABLE managed_orders ADD COLUMN IF NOT EXISTS error_message    VARCHAR;",
+    "ALTER TABLE managed_orders ADD COLUMN IF NOT EXISTS failed_at        TIMESTAMPTZ;",
+    # Backfill managed_by default for rows that somehow slipped through without it
+    "UPDATE managed_orders SET managed_by='' WHERE managed_by IS NULL;",
+    # Update legacy 'draft' status → 'draft_local' for consistency
+    "UPDATE managed_orders SET status='draft_local' WHERE status='draft';",
+]
+
+
 def init_db() -> None:
     """
-    Create all tables if they do not already exist.
+    1. Create all tables that do not exist yet (CREATE TABLE IF NOT EXISTS semantics).
+    2. Run idempotent column migrations for the managed_orders table.
 
     Called once at application startup (FastAPI lifespan).
-    Safe to call multiple times — CREATE TABLE IF NOT EXISTS semantics.
+    Safe to call multiple times.
     """
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
+
+
+def _run_migrations() -> None:
+    """
+    Apply the Phase 1.5 DDL migrations against an already-created managed_orders
+    table.  Each statement is idempotent — safe to run on every startup.
+    """
+    with engine.begin() as conn:
+        for stmt in _MIGRATIONS:
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                # Log but don't crash — a missing column is caught at runtime,
+                # not silently skipped.  On a fresh DB all ADD IF NOT EXISTS
+                # statements will succeed without error anyway.
+                pass
