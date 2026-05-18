@@ -89,11 +89,21 @@ function useKeyboardOffset() {
   return offset;
 }
 
+// Module-level counter: multiple modals can stack safely.
+// Counter tracks how many components need scroll locked.
+// Only restores scroll when the last locker unmounts.
+let _scrollLockCount = 0;
+
 function useBodyScrollLock() {
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    _scrollLockCount += 1;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      _scrollLockCount -= 1;
+      if (_scrollLockCount === 0) {
+        document.body.style.overflow = '';
+      }
+    };
   }, []);
 }
 
@@ -342,6 +352,7 @@ function OrderActionSheet({ count, dark, submitting, onSend, onSendAndNew, onLog
 // 3b. DEPT PICKER MODAL  — 2-step: ээлж (dept) → төсөл (location)
 // ─────────────────────────────────────────────────────────────────────────────
 function DeptPickerModal({ departments, savedLists, dark, onSelect, onClose }) {
+  useBodyScrollLock();
   const [step, setStep]           = useState(1);          // 1 = dept, 2 = location
   const [pickedDept, setPickedDept] = useState(null);
 
@@ -872,7 +883,9 @@ function KitchenView() {
   const [darkMode, setDarkMode]         = useState(false);
   const [didAutoInit, setDidAutoInit]   = useState(false);
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-  const sentinelRef = useRef(null);
+  // observerRef holds the active IntersectionObserver instance so we can
+  // disconnect it when the sentinel node unmounts (e.g. after list switch).
+  const observerRef = useRef(null);
 
   const { toast, showToast, hideToast } = useToast();
 
@@ -1010,16 +1023,25 @@ function KitchenView() {
     });
   }, [extraEmployees]);
 
-  /* ── infinite-scroll sentinel ── */
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
+  /* ── infinite-scroll sentinel — callback ref ──
+   * Using a callback ref instead of useRef + useEffect([]) ensures the
+   * observer is re-created whenever the sentinel node mounts/unmounts
+   * (e.g. when switching between lists of different lengths).
+   * With the old empty-deps useEffect the observer would attach once and
+   * never re-attach after the sentinel was conditionally removed from DOM.
+   */
+  const sentinelCallbackRef = useCallback((node) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    if (!node) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisibleCount((n) => n + BATCH_SIZE); },
       { threshold: 0.1 },
     );
-    obs.observe(el);
-    return () => obs.disconnect();
+    obs.observe(node);
+    observerRef.current = obs;
   }, []);
 
   /* ── derived ── */
@@ -1097,6 +1119,7 @@ function KitchenView() {
         persistLists(updated);
         return updated;
       });
+      setVisibleCount(BATCH_SIZE); // reset pagination for the new list
       setActiveListId(listId);
       showToast(`"${dept.name} · ${location.label}" жагсаалт нэмэгдлээ ✓`);
     } catch {
@@ -1196,15 +1219,22 @@ function KitchenView() {
   const handleSubmitAndNew = () => {
     setSubmittingOrder(true);
     _submitOrder()
-      .then(() => clearAllMyEmployees())
       .then(() => {
-        setFavorites([]);
-        setExtraEmployees([]);
-        setHiddenIds([]);
-        setSelectedIds([]);
+        // Order confirmed — close sheet and unblock UI immediately so the
+        // user cannot re-submit even if the subsequent clear call is slow.
         setShowOrderSheet(false);
-        loadEmployees();
         showToast('Захиалга илгээгдлээ. Шинэ ээлж эхэллээ ✓');
+        // Clear shift is best-effort; a failure here does NOT mean the
+        // order failed, so we show a separate error toast and stop.
+        clearAllMyEmployees()
+          .then(() => {
+            setFavorites([]);
+            setExtraEmployees([]);
+            setHiddenIds([]);
+            setSelectedIds([]);
+            loadEmployees();
+          })
+          .catch(() => showToast('Ээлж цэвэрлэхэд алдаа гарлаа', 'error'));
       })
       .catch(() => showToast('Алдаа гарлаа', 'error'))
       .finally(() => setSubmittingOrder(false));
@@ -1382,7 +1412,7 @@ function KitchenView() {
 
             {/* Infinite scroll sentinel */}
             {visibleCount < filteredEmployees.length && (
-              <div ref={sentinelRef} className="py-2 text-center">
+              <div ref={sentinelCallbackRef} className="py-2 text-center">
                 <span className={`text-xs ${d.sub}`}>
                   {filteredEmployees.length - visibleCount} ажилтан үлдсэн…
                 </span>

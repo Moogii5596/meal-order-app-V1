@@ -98,6 +98,7 @@ function KitchenView() {
     const dept = departments.find((d) => String(d.id) === deptId);
     setSelectedDeptName(dept ? dept.name : '');
     setEmployees([]);
+    setSelectedLocation(''); // reset location filter — new dept may have different locations
   };
 
   /**
@@ -194,7 +195,10 @@ function KitchenView() {
     const idsToSubmit = selectedEmployeeIds.filter((id) =>
       sortedFilteredEmployees.some((e) => e.id === id),
     );
-    if (idsToSubmit.length === 0) return;
+    if (idsToSubmit.length === 0) {
+      showToast('Захиалах ажилтан сонгогдоогүй байна', 'error');
+      return;
+    }
 
     // FIX: was sending a plain array — backend expects { employee_ids: [...] }
     createOrder(selectedDate, selectedMeal, idsToSubmit)
