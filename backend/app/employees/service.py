@@ -63,7 +63,11 @@ def get_employees_by_department(dept_id: int, date: str, meal_type: str) -> list
         ),
         lambda: s.search_read(
             "hr.employee.meal",
-            [["date", "=", date], ["meal_type", "=", meal_type]],
+            [
+                ["date", "=", date],
+                ["meal_type", "=", meal_type],
+                ["employee_id.department_id", "=", int(dept_id)],  # OPT-2: scope to this dept only
+            ],
             ["employee_id"],
         ),
     )

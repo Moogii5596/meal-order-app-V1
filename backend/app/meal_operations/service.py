@@ -41,6 +41,34 @@ _ORDER_DETAIL_FIELDS = _ORDER_READ_FIELDS + ["note"]
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+def _exact_pairs_domain(pairs: list[tuple[str, str]]) -> list:
+    """
+    OPT-5: Build an Odoo domain that matches any of the given (date, meal_type) pairs exactly.
+
+    Uses Odoo prefix/Polish-notation domain algebra:
+      N pairs  →  (N-1) OR operators  +  N AND-groups of two leaf conditions each.
+
+    Example for pairs [(d1,t1), (d2,t2)]:
+      ["|", "&", ["date","=",d1], ["meal_type","=",t1],
+                 "&", ["date","=",d2], ["meal_type","=",t2]]
+
+    This prevents the cross-product over-fetch that arises from:
+      [["date", "in", all_dates], ["meal_type", "in", all_meal_types]]
+    which would return swipes for (d1,t2) and (d2,t1) even if those pairs
+    have no real orders on the current page.
+    """
+    if not pairs:
+        return [["id", "=", -1]]  # guaranteed-empty domain, no Odoo round-trip wasted
+    if len(pairs) == 1:
+        d, t = pairs[0]
+        return [["date", "=", d], ["meal_type", "=", t]]
+    # (N-1) OR operators, then N AND-groups
+    domain: list = ["|"] * (len(pairs) - 1)
+    for d, t in pairs:
+        domain += ["&", ["date", "=", d], ["meal_type", "=", t]]
+    return domain
+
+
 def _flatten_order(row: dict) -> None:
     """Resolve Many2one fields to plain strings in-place."""
     dept    = row.get("department_id")
@@ -108,9 +136,17 @@ def get_orders(
         _flatten_order(row)
 
     # ── Round 2: order-line employees + swipe records — parallel ──────────────
-    all_line_ids   = [lid for o in orders for lid in (o.get("order_line") or [])]
-    all_dates      = list({o["date"] for o in orders if o.get("date")})
-    all_meal_types = list({o["type"] for o in orders if o.get("type")})
+    all_line_ids = [lid for o in orders for lid in (o.get("order_line") or [])]
+
+    # OPT-5: build exact (date, type) pairs instead of a cross-product domain.
+    # A page of 10 orders covering 3 dates × 4 meal types previously fetched
+    # swipes for 12 combinations; only the 3–4 real pairs are needed.
+    exact_pairs = list({
+        (o["date"], o["type"])
+        for o in orders
+        if o.get("date") and o.get("type")
+    })
+    swipe_domain = _exact_pairs_domain(exact_pairs)
 
     raw_lines, raw_swipes = s.parallel(
         lambda: (
@@ -120,10 +156,10 @@ def get_orders(
         lambda: (
             s.search_read(
                 "hr.employee.meal",
-                [["date", "in", all_dates], ["meal_type", "in", all_meal_types]],
+                swipe_domain,
                 ["employee_id", "date", "meal_type"],
             )
-            if all_dates and all_meal_types else []
+            if exact_pairs else []
         ),
     )
 

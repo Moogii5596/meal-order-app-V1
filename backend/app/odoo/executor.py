@@ -39,6 +39,12 @@ from typing import Any, Callable
 from app.config import ODOO_DB, ODOO_PASSWORD
 from app.odoo.client import _admin_uid, _models
 
+# OPT-3: Module-level persistent thread pool.
+# Eliminates per-call pool creation/teardown (~2–5 ms overhead per parallel() invocation).
+# max_workers=8 covers the largest parallel() fan-out (currently 2) with room to grow.
+# Daemon=True (default for ThreadPoolExecutor): threads exit cleanly when the process exits.
+_parallel_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="odoo_parallel")
+
 
 class OdooSession:
     """
@@ -183,9 +189,8 @@ class OdooSession:
             return []
         if n == 1:
             return [fns[0]()]
-        with ThreadPoolExecutor(max_workers=n) as pool:
-            futures = [pool.submit(fn) for fn in fns]
-            return [f.result() for f in futures]
+        futures = [_parallel_pool.submit(fn) for fn in fns]
+        return [f.result() for f in futures]
 
 
 # ── Session factories ─────────────────────────────────────────────────────────
