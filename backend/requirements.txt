@@ -4,3 +4,5 @@ requests
 urllib3
 python-dotenv
 python-multipart
+sqlalchemy
+psycopg2-binary

@@ -1,0 +1,81 @@
+/* ─────────────────────────────
+   CARD
+───────────────────────────── */
+
+.ui-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+
+/* ─────────────────────────────
+   BUTTON
+───────────────────────────── */
+
+.ui-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.ui-btn:hover {
+  opacity: 0.9;
+}
+
+.ui-btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.ui-btn-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.ui-btn-success {
+  background: #16a34a;
+  color: white;
+}
+
+.ui-btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* ─────────────────────────────
+   EMPTY STATE
+───────────────────────────── */
+
+.ui-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  background: #fff;
+  border-radius: 12px;
+}
+
+/* ─────────────────────────────
+   PAGE LOADER
+───────────────────────────── */
+
+.ui-loader {
+  text-align: center;
+  padding: 50px 20px;
+  color: #6b7280;
+}
+
+/* ─────────────────────────────
+   SECTION TITLE
+───────────────────────────── */
+
+.ui-section-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}

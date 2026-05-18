@@ -1,0 +1,66 @@
+/* ── Responsive overrides (max-width: 600px) ────────────────────────────────── */
+@media (max-width: 600px) {
+  .App { padding: 12px; }
+  .header-row h1 { font-size: 18px; }
+  .control-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .control-row label { width: auto; }
+  .control-row input[type="date"],
+  .control-row select { width: 100%; min-width: unset; }
+  .meal-types { gap: 6px; }
+  .meal-types button { padding: 7px 12px; font-size: 13px; }
+  .table-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .table-header-actions { width: 100%; }
+  .employee-table th, .employee-table td { padding: 8px 10px; font-size: 13px; }
+  .orders-table th, .orders-table td { padding: 8px 10px; font-size: 13px; }
+  .submit-btn { font-size: 15px; padding: 12px; }
+  .login-box { margin: 40px 16px; padding: 24px; }
+  .modal-box { padding: 16px; }
+
+  /* Column visibility: hide desktop cols, show mobile combined col */
+  .col-desktop { display: none; }
+  .col-mobile  { display: table-cell; }
+
+  /* CampFavView: stack vertically on mobile */
+  .camp-fav-layout { flex-direction: column; }
+  .camp-fav-sidebar { width: 100%; }
+
+  /* iOS Safari: prevent zoom on input focus (needs font-size >= 16px) */
+  input[type="date"],
+  input[type="text"],
+  input[type="password"],
+  select { font-size: 16px !important; }
+
+  /* Touch targets: at least 44px tall */
+  .action-btn,
+  .approve-btn,
+  .confirm-btn,
+  .meal-types button,
+  .state-tabs button { min-height: 44px; }
+
+  /* Filters: stack on mobile */
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters input[type="date"],
+  .filters select { width: 100%; }
+
+  /* ── Dashboard mobile overrides ── */
+  .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .dash-kpi-card { padding: 10px 12px; }
+  .dash-kpi-card .kpi-value { font-size: 22px; }
+
+  .dash-filter-bar { padding: 10px 12px; }
+  .dash-filter-row { flex-direction: column; align-items: stretch; }
+  .dash-filter-label { width: auto; }
+  .dash-date-input { width: 100%; }
+
+  .dash-tabs { gap: 5px; }
+  .dash-tab { padding: 6px 10px; font-size: 12px; }
+
+  /* Hide desktop table, show mobile cards */
+  .dash-table-wrap { display: none; }
+  .mobile-order-cards { display: block; }
+
+  .dash-bulk-toolbar { flex-wrap: wrap; }
+  .dash-bulk-spacer { display: none; }
+
+  .bulk-btn, .dash-action-btn { min-height: 40px; }
+}

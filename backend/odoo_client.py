@@ -3,6 +3,8 @@ import ssl
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import socket
+socket.setdefaulttimeout(30)
 
 load_dotenv()
 
@@ -14,20 +16,16 @@ USERNAME = os.getenv("ODOO_USERNAME")
 PASSWORD = os.getenv("ODOO_PASSWORD")
 
 # Cache (performance сайжруулалт)
-_uid = None
-_models = None
 
-def get_odoo_connection():
-    global _uid, _models
-
-    if _uid and _models:
-        return _uid, _models
-
-    common = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/common', context=context)
-    _uid = common.authenticate(DB, USERNAME, PASSWORD, {})
-    _models = xmlrpc.client.ServerProxy(f'{URL}/xmlrpc/object', context=context)
-
-    return _uid, _models
+def get_odoo_connection(): 
+    common = xmlrpc.client.ServerProxy( 
+        f'{URL}/xmlrpc/common', 
+        context=context ) 
+    uid = common.authenticate( DB, USERNAME, PASSWORD, {} ) 
+    models = xmlrpc.client.ServerProxy( 
+        f'{URL}/xmlrpc/object', 
+        context=context ) 
+    return uid, models
 
 
 # Хэрэглэгчийг Odoo-д нэвтрүүлж дүрийг access group-аар тодорхойлно
@@ -71,19 +69,23 @@ def authenticate_user(username, password):
             employee = models.execute_kw(DB, uid, password,
                 'hr.employee', 'search_read',
                 [[['user_id', '=', uid]]],
-                {'fields': ['department_id'], 'limit': 1})
+                {'fields': ['department_id', 'location'], 'limit': 1})
             dept_id = None
             dept_name = None
+            location = None
             if employee and employee[0].get('department_id'):
                 dept_id = employee[0]['department_id'][0]
                 dept_name = employee[0]['department_id'][1]
+            if employee and employee[0].get('location'):
+                location = employee[0]['location']
             return {
                 'role': role,
                 'name': user_data[0]['name'],
                 'uid': uid,
                 'password': password,
                 'dept_id': dept_id,
-                'dept_name': dept_name
+                'dept_name': dept_name,
+                'location': location
             }
 
     return None
@@ -178,13 +180,62 @@ def get_order_detail(order_id):
         lines = models.execute_kw(
             DB, uid, PASSWORD,
             'meal.order.line', 'read', [line_ids],
-            {'fields': ['employee_id']}
+            {'fields': ['employee_id', 'department_id']}
         )
         employees = [
-            {'id': l['employee_id'][0], 'name': l['employee_id'][1]}
+            {
+                'id': l['employee_id'][0],
+                'name': l['employee_id'][1],
+                'line_id': l['id'],
+                'dept_name': l['department_id'][1] if l.get('department_id') else ''
+            }
             for l in lines if l['employee_id']
         ]
     return {**order[0], 'employees': employees}
+
+
+def update_order_lines(order_id, employee_ids):
+    """Захиалгын ажилтны жагсаалтыг шинэчлэх — нэмэх, устгах."""
+    uid, models = get_odoo_connection()
+    order = models.execute_kw(
+        DB, uid, PASSWORD,
+        'meal.order', 'read', [[order_id]],
+        {'fields': ['order_line']}
+    )
+    if not order:
+        return False
+
+    current_line_ids = order[0]['order_line']
+    current_emp_to_line = {}
+    if current_line_ids:
+        lines = models.execute_kw(
+            DB, uid, PASSWORD,
+            'meal.order.line', 'read', [current_line_ids],
+            {'fields': ['employee_id']}
+        )
+        current_emp_to_line = {
+            l['employee_id'][0]: l['id']
+            for l in lines if l['employee_id']
+        }
+
+    current_emp_ids = set(current_emp_to_line.keys())
+    target_emp_ids = set(employee_ids)
+    to_delete = current_emp_ids - target_emp_ids
+    to_add = target_emp_ids - current_emp_ids
+
+    commands = []
+    for emp_id in to_delete:
+        commands.append((2, current_emp_to_line[emp_id], 0))   # устгах
+    for emp_id in to_add:
+        commands.append((0, 0, {'employee_id': emp_id}))         # нэмэх
+
+    if commands:
+        models.execute_kw(
+            DB, uid, PASSWORD,
+            'meal.order', 'write',
+            [[order_id], {'order_line': commands}]
+        )
+    return True
 
 
 def update_order_state(order_id, new_state):
