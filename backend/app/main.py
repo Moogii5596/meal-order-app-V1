@@ -13,18 +13,35 @@ Business logic lives in the domain modules:
     reporting/       — analytics aggregations (service only, no router yet)
     odoo/            — XML-RPC transport layer (no domain logic)
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
 from app.database import init_db
-from app.auth.router         import router as auth_router
-from app.employees.router    import router as employees_router
+from app.auth.router            import router as auth_router
+from app.employees.router       import router as employees_router
 from app.meal_operations.router import router as meal_ops_router
-from app.camp.router         import router as camp_router
-from app.debug_router        import router as debug_router  # TEMP — remove after investigation
+from app.camp.router            import router as camp_router
+from app.debug_router           import router as debug_router  # TEMP — remove after investigation
 
-app = FastAPI(title="Meal Order API")
+
+# ── Lifespan ──────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Startup: create all PostgreSQL tables if they don't exist yet.
+    Shutdown: SQLAlchemy connection pool is disposed automatically by the GC.
+    """
+    init_db()
+    yield
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="Meal Order API", lifespan=lifespan)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -34,9 +51,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ── Database ──────────────────────────────────────────────────────────────────
-init_db()
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)

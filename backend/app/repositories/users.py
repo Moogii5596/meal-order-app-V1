@@ -3,10 +3,20 @@ Repository for the users table.
 
 Tracks which users have logged in and their roles/departments,
 so the camp_manager can view and manage them.
+Uses SQLAlchemy ORM — no raw sqlite3 calls.
+
+Upsert strategy
+───────────────
+PostgreSQL INSERT … ON CONFLICT DO UPDATE replaces SQLite's
+INSERT OR REPLACE.  All non-PK columns are refreshed on conflict
+so login metadata (role, dept, last_login) stays current.
 """
 from datetime import datetime
 from typing import Optional
-from app.database import get_db
+
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from app.database import User, get_db
 
 
 def upsert_user(
@@ -17,39 +27,49 @@ def upsert_user(
     location: Optional[str] = None,
 ) -> None:
     """Insert or update a user record on login."""
-    with get_db() as conn:
-        conn.execute(
-            """INSERT OR REPLACE INTO users
-               (username, role, dept_id, dept_name, location, last_login)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (username, role, dept_id, dept_name, location, datetime.now().isoformat()),
+    now = datetime.now().isoformat()
+    with get_db() as session:
+        stmt = (
+            pg_insert(User)
+            .values(
+                username=username,
+                role=role,
+                dept_id=dept_id,
+                dept_name=dept_name,
+                location=location,
+                last_login=now,
+            )
+            .on_conflict_do_update(
+                index_elements=["username"],
+                set_={
+                    "role":       role,
+                    "dept_id":    dept_id,
+                    "dept_name":  dept_name,
+                    "location":   location,
+                    "last_login": now,
+                },
+            )
         )
-        conn.commit()
+        session.execute(stmt)
+        session.commit()
 
 
 def get_all_users(roles: Optional[list[str]] = None) -> list[dict]:
     """Return all users, optionally filtered by role list."""
-    with get_db() as conn:
+    with get_db() as session:
+        q = session.query(User)
         if roles:
-            placeholders = ",".join("?" for _ in roles)
-            rows = conn.execute(
-                f"SELECT username, role, dept_id, dept_name, location, last_login "
-                f"FROM users WHERE role IN ({placeholders})",
-                roles,
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT username, role, dept_id, dept_name, location, last_login FROM users"
-            ).fetchall()
+            q = q.filter(User.role.in_(roles))
+        rows = q.all()
 
     return [
         {
-            "username": row["username"],
-            "role": row["role"],
-            "dept_id": row["dept_id"],
-            "dept_name": row["dept_name"],
-            "location": row["location"],
-            "last_login": row["last_login"],
+            "username":   row.username,
+            "role":       row.role,
+            "dept_id":    row.dept_id,
+            "dept_name":  row.dept_name,
+            "location":   row.location,
+            "last_login": row.last_login,
         }
         for row in rows
     ]

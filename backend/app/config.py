@@ -16,7 +16,10 @@ SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
 CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "*").split(",")
 
 # ── Database ──────────────────────────────────────────────────────────────────
-DB_PATH: str = os.getenv("DB_PATH", "favorites.db")
+# Full PostgreSQL connection string.
+# Railway / Neon format: postgresql://user:pass@host:port/dbname?sslmode=require
+# Set this in your .env or Railway/Render environment variables.
+DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
 # ── Odoo ──────────────────────────────────────────────────────────────────────
 ODOO_URL: str = os.getenv("ODOO_URL", "")
